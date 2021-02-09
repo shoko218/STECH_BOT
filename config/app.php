@@ -175,6 +175,9 @@ return [
         App\Providers\EventServiceProvider::class,
         App\Providers\RouteServiceProvider::class,
 
+        //laravel-slack-api
+        Vluzrmos\SlackApi\SlackApiServiceProvider::class,
+
     ],
 
     /*
@@ -225,6 +228,22 @@ return [
         'URL' => Illuminate\Support\Facades\URL::class,
         'Validator' => Illuminate\Support\Facades\Validator::class,
         'View' => Illuminate\Support\Facades\View::class,
+
+    //laravel-slack-api
+        'SlackApi'              => Vluzrmos\SlackApi\Facades\SlackApi::class,
+        'SlackChannel'          => Vluzrmos\SlackApi\Facades\SlackChannel::class,
+        'SlackChat'             => Vluzrmos\SlackApi\Facades\SlackChat::class,
+        'SlackGroup'            => Vluzrmos\SlackApi\Facades\SlackGroup::class,
+        'SlackFile'             => Vluzrmos\SlackApi\Facades\SlackFile::class,
+        'SlackSearch'           => Vluzrmos\SlackApi\Facades\SlackSearch::class,
+        'SlackInstantMessage'   => Vluzrmos\SlackApi\Facades\SlackInstantMessage::class,
+        'SlackUser'             => Vluzrmos\SlackApi\Facades\SlackUser::class,
+        'SlackStar'             => Vluzrmos\SlackApi\Facades\SlackStar::class,
+        'SlackUserAdmin'        => Vluzrmos\SlackApi\Facades\SlackUserAdmin::class,
+        'SlackRealTimeMessage'  => Vluzrmos\SlackApi\Facades\SlackRealTimeMessage::class,
+        'SlackTeam'             => Vluzrmos\SlackApi\Facades\SlackTeam::class,
+        'SlackOAuth'          => Vluzrmos\SlackApi\Facades\SlackOAuth::class,
+        'SlackOAuthV2'          => Vluzrmos\SlackApi\Facades\SlackOAuthV2::class,
 
     ],
 
