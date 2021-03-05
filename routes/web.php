@@ -14,3 +14,9 @@
 Route::get('/', function () {
     return view('welcome');
 });
+
+Route::post('/interactive_endpoint','InteractiveEndpointController');
+
+Route::prefix('/slash')->group(function () {
+    Route::post('/show_create_event_modal','SlashCommand\ShowCreateEventModalController');
+});
