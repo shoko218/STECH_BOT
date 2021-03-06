@@ -38,7 +38,7 @@ class InteractiveEndpointController extends Controller
                             $notice_datetime->modify("+".$postData['view']['state']['values']['notice_time']['notice-hour']['selected_option']['value']." hour")->modify("+".$postData['view']['state']['values']['notice_time']['notice-minute']['selected_option']['value']." minute");//時、分を各フォームから取得し、上で作成したDateTime型に情報を追加
 
                             $event = Event::create([
-                                'name' => $$event_name,
+                                'name' => $event_name,
                                 'description' => $event_description,
                                 'event_datetime' => $event_datetime,
                                 'notice_datetime' => $notice_datetime,
@@ -50,7 +50,7 @@ class InteractiveEndpointController extends Controller
                             DB::commit();
                         } catch (\Throwable $th) {
                             DB::rollBack();
-
+                            Log::info($th);
                             SlackChat::message($postData['user']['id'], "エラーが発生し、イベントを登録できませんでした。もう一度お試しください。");
                         }
                         break;
