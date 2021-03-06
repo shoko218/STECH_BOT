@@ -42,17 +42,41 @@ class NoticeEvent extends Command
     public function handle()
     {
         try {
-            $now = new DateTime();
-            $events = Event::whereDate('notice_datetime','=', date('Y-m-d'))->get();
-            foreach($events as $event){
-                $notice_datetime = new DateTime($event->notice_datetime);
-                if($notice_datetime->format('Y/m/d H:i') === $now->format('Y/m/d H:i')){
-                    $event_datetime = new DateTime($event->event_datetime);
-                    $message = SlackChat::message("#general","",['blocks'=>'[{"type": "section","text": {"type": "mrkdwn","text": "<!channel> '."\n".'【イベントのお知らせ】'."\n *{$event->name}* ".'を開催します！'."\n{$event_datetime->format('Y年m月d日 H時i分~')}\n".'概要:'."{$event->description}\n".'参加したい方はボタンを押してください！"}},{"type": "actions","elements": [{"type": "button","text": {"type": "plain_text","text": "参加する！","emoji": true},"value": "'.$event->id.'","action_id": "Register_to_attend_the_event"}]}]']);
-                    Log::info("noticed!");
-                }
+            $notice_events = Event::whereDate('notice_datetime',date('Y-m-d'))->whereTime('notice_datetime',date('H:i:').'00')->get();//今知らせる予定のイベントを取得
+            foreach($notice_events as $event){
+                $block = '[
+                            {
+                                "type": "section",
+                                "text": {
+                                    "type": "mrkdwn",
+                                    "text": "<!channel> '."\n".'【イベントのお知らせ】'."\n *{$event->name}* ".'を開催します！'."\n{$event->event_datetime->format('Y年m月d日 H時i分~')}\n".'概要:'."{$event->description}\n".'参加したい方はボタンを押してください！"
+                                }
+                            },
+                            {
+                                "type": "actions",
+                                "elements": [
+                                    {
+                                        "type": "button",
+                                        "text": {
+                                            "type": "plain_text",
+                                            "text": "参加する！",
+                                            "emoji": true
+                                        },
+                                        "value": "'.$event->id.'",
+                                        "action_id": "Register_to_attend_the_event"
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "section",
+                                "text": {
+                                    "type": "mrkdwn",
+                                    "text": "参加者'."\n まだいません。".'"
+                                }
+                            }
+                        ]';
+                SlackChat::message("#seg-test-channel","",['blocks' => $block]);
             }
-            Log::info("task completed!");
         } catch (\Throwable $th) {
             Log::info($th);
         }

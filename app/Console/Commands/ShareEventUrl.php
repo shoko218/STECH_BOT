@@ -42,17 +42,12 @@ class ShareEventUrl extends Command
     public function handle()
     {
         try {
-            $now = new DateTime();
-            $events = Event::whereDate('event_datetime','=', date('Y-m-d'))->get();
-            foreach($events as $event){
-                $event_datetime = new DateTime($event->event_datetime);
-                $event_datetime->modify('-30 minutes');
-                if($event_datetime->format('Y/m/d H:i') === $now->format('Y/m/d H:i')){
-                    $message = SlackChat::message("#general","【イベントURLのお知らせ】\n本日{$event_datetime->format('H時i分')}から開催する *{$event->name}* のURLはこちらです!\n{$event->url}");
-                    Log::info("noticed!");
-                }
+            $start_time = new DateTime();
+            $start_time->modify('+30 minutes');
+            $coming_soon_events = Event::whereDate('event_datetime',$start_time->format('Y-m-d'))->whereTime('event_datetime',$start_time->format('H:i:').'00')->get();//30分後に始まるイベントを取得
+            foreach($coming_soon_events as $event){
+                SlackChat::message("#seg-test-channel","<!channel> 【イベントURLのお知らせ】\n本日{$event->event_datetime->format('H時i分')}から開催する *{$event->name}* のURLはこちらです!\n{$event->url}");
             }
-            Log::info("task completed!");
         } catch (\Throwable $th) {
             Log::info($th);
         }
