@@ -44,7 +44,7 @@ class RemindEvent extends Command
         try {
             $today_held_events = Event::whereDate('event_datetime','=', date('Y-m-d'))->get();//今日開催のイベントを取得
             foreach ($today_held_events as $event) {
-                SlackChat::message("#seg-test-channel","<!channel>\n".'【リマインド】'."\n本日{$event->event_datetime->format('H時i分')}から、 *{$event->name}* ".'を開催します！'."\n 概要:"."{$event->description}\n");
+                SlackChat::message("#seg-test-channel","<!channel>\n【リマインド】\n本日{$event->event_datetime->format('H時i分')}から、 *{$event->name}* を開催します！\n\n{$event->description}\n");
             }
         } catch (\Throwable $th) {
             Log::info($th);

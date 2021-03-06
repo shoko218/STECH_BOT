@@ -49,7 +49,7 @@ class NoticeEvent extends Command
                                 "type": "section",
                                 "text": {
                                     "type": "mrkdwn",
-                                    "text": "<!channel> '."\n".'【イベントのお知らせ】'."\n *{$event->name}* ".'を開催します！'."\n{$event->event_datetime->format('Y年m月d日 H時i分~')}\n".'概要:'."{$event->description}\n".'参加したい方はボタンを押してください！"
+                                    "text": "<!channel> '."\n".'【イベントのお知らせ】'."\n{$event->event_datetime->format('m月d日 H時i分~')}\n *{$event->name}* ".'を開催します！'."\n\n{$event->description}\n\n".'参加を希望する方は下のボタンを押してください！"
                                 }
                             },
                             {
