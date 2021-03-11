@@ -15,11 +15,11 @@ class ShowCreateEventModalController extends Controller
         try {
             $url = 'https://slack.com/api/views.open';
             $token = config('services.slack.token');
-            $view = $this->getFormat();
+            $view = $this->getModalConstitution();
             $trigger_id = $request->input('trigger_id');
 
             $params = [
-                'view' => \GuzzleHttp\json_encode($view),
+                'view' => json_encode($view),
                 'trigger_id' => $trigger_id
             ];
 
@@ -43,9 +43,11 @@ class ShowCreateEventModalController extends Controller
         }
     }
 
-    public function getFormat(){
+    //現在、timepickerがベータ版にしかないのでactionに日時のセレクターを埋め込み、無理矢理日時が横並びになるようにしています
+    //timepickerが正式にリリースされたら速やかにblock kitの構成を変更し、それにしたがってInteractiveEndpointControllerでの処理も書き換えてください
+    public function getModalConstitution(){//モーダルの構成を配列で返す
         return [
-            "callback_id"=> "create_event",
+            "callback_id" => "create_event",
             "type" => "modal",
             "title" => [
                 "type" => "plain_text",
@@ -108,7 +110,7 @@ class ShowCreateEventModalController extends Controller
                     "block_id" => "event_date",
                     "element" => [
                         "type" => "datepicker",
-                        "action_id" => "event-date",
+                        "action_id" => "event_date",
                         "placeholder" => [
                             "type" => "plain_text",
                             "text" => "年月日",
@@ -127,7 +129,7 @@ class ShowCreateEventModalController extends Controller
                     "elements" => [
                         [
                             "type" => "static_select",
-                            "action_id" => "event-hour",
+                            "action_id" => "event_hour",
                             "placeholder" => [
                                 "type" => "plain_text",
                                 "text" => "時"
@@ -312,7 +314,7 @@ class ShowCreateEventModalController extends Controller
                         ],
                         [
                             "type" => "static_select",
-                            "action_id" => "event-minute",
+                            "action_id" => "event_minute",
                             "placeholder" => [
                                 "type" => "plain_text",
                                 "text" => "分"
@@ -362,7 +364,7 @@ class ShowCreateEventModalController extends Controller
                     "block_id" => "notice_date",
                     "element" => [
                         "type" => "datepicker",
-                        "action_id" => "notice-date",
+                        "action_id" => "notice_date",
                         "placeholder" => [
                             "type" => "plain_text",
                             "text" => "年月日",
@@ -381,7 +383,7 @@ class ShowCreateEventModalController extends Controller
                     "elements" => [
                         [
                             "type" => "static_select",
-                            "action_id" => "notice-hour",
+                            "action_id" => "notice_hour",
                             "placeholder" => [
                                 "type" => "plain_text",
                                 "text" => "時"
@@ -566,7 +568,7 @@ class ShowCreateEventModalController extends Controller
                         ],
                         [
                             "type" => "static_select",
-                            "action_id" => "notice-minute",
+                            "action_id" => "notice_minute",
                             "placeholder" => [
                                 "type" => "plain_text",
                                 "text" => "分"

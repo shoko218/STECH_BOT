@@ -15,10 +15,8 @@ class InteractiveEndpointController extends Controller
 {
     public function __invoke(Request $request){
         try {
-            response('',200)->send();//3秒以内にレスポンスを返さないとタイムアウト扱いになるので最初に空レスポンスをしておく
-
             $payload = $request->input('payload');
-            $postData = \GuzzleHttp\json_decode($payload, true);
+            $postData = json_decode($payload, true);
 
             //interactive endpointは全てのアクションにおいて共通なので、この先もっとアクションが増えることを考えるとアクションタイプで分類した後にアクションの識別子で各処理を区別する方がわかりやすいかと思いそうしています
             if($postData['type'] === "view_submission"){//モーダルのフォームが送信された場合
@@ -31,11 +29,35 @@ class InteractiveEndpointController extends Controller
                             $event_description = $postData['view']['state']['values']['description']['description']['value'];
                             $event_url = $postData['view']['state']['values']['url']['url']['value'];
 
-                            $event_datetime=new DateTime($postData['view']['state']['values']['event_date']['event-date']['selected_date']);//年月日だけでDateTime型作成
-                            $event_datetime->modify("+".$postData['view']['state']['values']['event_time']['event-hour']['selected_option']['value']." hour")->modify("+".$postData['view']['state']['values']['event_time']['event-minute']['selected_option']['value']." minute");//時、分を各フォームから取得し、上で作成したDateTime型に情報を追加
+                            $event_datetime = new DateTime($postData['view']['state']['values']['event_date']['event_date']['selected_date']);//年月日だけでDateTime型作成
+                            $event_datetime->modify("+".$postData['view']['state']['values']['event_time']['event_hour']['selected_option']['value']." hour")->modify("+".$postData['view']['state']['values']['event_time']['event_minute']['selected_option']['value']." minute");//時、分を各フォームから取得し、上で作成したDateTime型に情報を追加
 
-                            $notice_datetime=new DateTime($postData['view']['state']['values']['notice_date']['notice-date']['selected_date']);//年月日だけでDateTime型作成
-                            $notice_datetime->modify("+".$postData['view']['state']['values']['notice_time']['notice-hour']['selected_option']['value']." hour")->modify("+".$postData['view']['state']['values']['notice_time']['notice-minute']['selected_option']['value']." minute");//時、分を各フォームから取得し、上で作成したDateTime型に情報を追加
+                            $notice_datetime = new DateTime($postData['view']['state']['values']['notice_date']['notice_date']['selected_date']);//年月日だけでDateTime型作成
+                            $notice_datetime->modify("+".$postData['view']['state']['values']['notice_time']['notice_hour']['selected_option']['value']." hour")->modify("+".$postData['view']['state']['values']['notice_time']['notice_minute']['selected_option']['value']." minute");//時、分を各フォームから取得し、上で作成したDateTime型に情報を追加
+
+                            $errors = [];//バリデーション処理
+                            $now = new DateTime();
+                            if($notice_datetime <= $now){//お知らせ日時が現在時刻以前の場合
+                                $errors["errors"]["notice_date"] = "現在時刻以降の日時を入力してください。";
+                            }
+                            if($event_datetime <= $now){//イベント日時が現在時刻以前の場合
+                                $errors["errors"]["event_date"] =  "現在時刻以降の日時を入力してください。";
+                            }
+                            if ($event_datetime <= $notice_datetime) {//イベント日時がお知らせ日時以前の場合
+                                $errors["errors"]["notice_date"] = "お知らせする日時はイベントの日時より前に設定してください。";
+                            }
+                            if(!filter_var($event_url, FILTER_VALIDATE_URL)){//URLの有効性を確認(ASCIIオンリーのURLのみの対応となるので、URLに日本語が含まれるものは弾かれる)
+                                $errors["errors"]["url"] = "有効なURLを入力してください。";
+                            }
+
+                            if(empty($errors["errors"])){//バリデーションエラーがなければ
+                                response('',200)->send();//3秒以内にレスポンスを返さないとタイムアウト扱いになるので、バリデーションが済んだらすぐにレスポンスを返す
+                            }else{//バリデーションエラーがあれば
+                                $errors["response_action"] = "errors";
+                                Log::info(json_encode($errors));
+                                response()->json($errors)->send();//エラーの箇所とともにエラーレスポンスを返す
+                                return 1;//処理を終了
+                            }
 
                             $event = Event::create([
                                 'name' => $event_name,
@@ -58,6 +80,7 @@ class InteractiveEndpointController extends Controller
             }else if($postData['type'] === "block_actions"){//block要素でアクションがあった場合
                 switch ($postData['actions'][0]['action_id']) {
                     case 'Register_to_attend_the_event': //イベントの参加者登録
+                        response('',200)->send();//3秒以内にレスポンスを返さないとタイムアウト扱いになるので最初に空レスポンスをしておく
                         DB::beginTransaction();
 
                         try {
@@ -80,39 +103,9 @@ class InteractiveEndpointController extends Controller
                                 $event_participants = 'まだいません。';
                             }
 
-                            $blocks = '[
-                                            {
-                                                "type": "section",
-                                                "text": {
-                                                    "type": "mrkdwn",
-                                                    "text": "'.$postData['message']['blocks'][0]['text']['text'].'"
-                                                }
-                                            },
-                                            {
-                                                "type": "actions",
-                                                "elements": [
-                                                    {
-                                                        "type": "button",
-                                                        "text": {
-                                                            "type": "plain_text",
-                                                            "text": "参加する！",
-                                                            "emoji": true
-                                                        },
-                                                        "value": "'.$event_id.'",
-                                                        "action_id": "Register_to_attend_the_event"
-                                                    }
-                                                ]
-                                            },
-                                            {
-                                                "type": "section",
-                                                "text": {
-                                                    "type": "mrkdwn",
-                                                    "text": "参加者'."\n $event_participants".'"
-                                                }
-                                            }
-                                        ]';
+                            $blocks = $this->getRegisterToAttendTheEventBlocks($postData['message']['blocks'][0]['text']['text'],$event_id,$event_participants);
 
-                            SlackChat::update($postData['container']['channel_id'],"",$postData['message']['ts'],['blocks'=>$blocks.']']);
+                            SlackChat::update($postData['container']['channel_id'],"",$postData['message']['ts'],['blocks' => json_encode($blocks)]);
 
                             DB::commit();
                         } catch (\Throwable $th) {
@@ -125,5 +118,39 @@ class InteractiveEndpointController extends Controller
             Log::info($th);
         }
         return 0;
+    }
+
+    public function getRegisterToAttendTheEventBlocks($msg,$event_id,$event_participants){//イベントの参加者登録時に更新する内容を配列で返す(送信する際はjsonエンコードして送信)
+        return [
+            [
+                "type" => "section",
+                "text" => [
+                    "type" => "mrkdwn",
+                    "text" => $msg
+                ]
+            ],
+            [
+                "type" => "actions",
+                "elements" => [
+                    [
+                        "type" => "button",
+                        "text" => [
+                            "type" => "plain_text",
+                            "text" => "参加する！",
+                            "emoji" => true
+                        ],
+                        "value" => $event_id,
+                        "action_id" => "Register_to_attend_the_event"
+                    ]
+                ]
+            ],
+            [
+                "type" => "section",
+                "text" => [
+                    "type" => "mrkdwn",
+                    "text" => "参加者\n $event_participants"
+                ]
+            ]
+        ];
     }
 }

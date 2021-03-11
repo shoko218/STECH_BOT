@@ -42,43 +42,47 @@ class NoticeEvent extends Command
     public function handle()
     {
         try {
-            $notice_events = Event::whereDate('notice_datetime',date('Y-m-d'))->whereTime('notice_datetime',date('H:i:').'00')->get();//今知らせる予定のイベントを取得
-            foreach($notice_events as $event){
-                $block = '[
-                            {
-                                "type": "section",
-                                "text": {
-                                    "type": "mrkdwn",
-                                    "text": "<!channel> '."\n".'【イベントのお知らせ】'."\n{$event->event_datetime->format('m月d日 H時i分~')}\n *{$event->name}* ".'を開催します！'."\n\n{$event->description}\n\n".'参加を希望する方は下のボタンを押してください！"
-                                }
-                            },
-                            {
-                                "type": "actions",
-                                "elements": [
-                                    {
-                                        "type": "button",
-                                        "text": {
-                                            "type": "plain_text",
-                                            "text": "参加する！",
-                                            "emoji": true
-                                        },
-                                        "value": "'.$event->id.'",
-                                        "action_id": "Register_to_attend_the_event"
-                                    }
-                                ]
-                            },
-                            {
-                                "type": "section",
-                                "text": {
-                                    "type": "mrkdwn",
-                                    "text": "参加者'."\n まだいません。".'"
-                                }
-                            }
-                        ]';
-                SlackChat::message("#seg-test-channel","",['blocks' => $block]);
+            $notice_events = Event::whereDate('notice_datetime', date('Y-m-d'))->whereTime('notice_datetime', date('H:i:').'00')->get();//今知らせる予定のイベントを取得
+            foreach ($notice_events as $event) {
+                $blocks = $this->getBlocks($event);
+                SlackChat::message("#seg-test-channel","",['blocks' => json_encode($blocks)]);
             }
         } catch (\Throwable $th) {
             Log::info($th);
         }
+    }
+
+    public function getBlocks($event){//送信するblockを配列で返す
+        return [
+            [
+                "type" => "section",
+                "text" => [
+                    "type" => "mrkdwn",
+                    "text" => "<!channel> \n【イベントのお知らせ】\n{$event->event_datetime->format('m月d日 H時i分~')}\n *{$event->name}* を開催します！\n\n{$event->description}\n\n参加を希望する方は下のボタンを押してください！"
+                ]
+            ],
+            [
+                "type" => "actions",
+                "elements" => [
+                    [
+                        "type" => "button",
+                        "text" => [
+                            "type" => "plain_text",
+                            "text" => "参加する！",
+                            "emoji" => true
+                        ],
+                        "value" => "$event->id",
+                        "action_id" => "Register_to_attend_the_event"
+                    ]
+                ]
+            ],
+            [
+                "type" => "section",
+                "text" => [
+                    "type" => "mrkdwn",
+                    "text" => "参加者\n まだいません。"
+                ]
+            ]
+        ];
     }
 }
