@@ -91,35 +91,42 @@ class InteractiveEndpointController extends Controller
                         response('',200)->send();//3秒以内にレスポンスを返さないとタイムアウト扱いになるので最初に空レスポンスをしておく
                         DB::beginTransaction();
                         try {
-                            $event_id = $postData['message']['blocks'][1]['elements'][0]['value'];
+                            Log::info($postData['message']['blocks'][1]['elements'][0]['value']);
+                            $event = Event::find($postData['message']['blocks'][1]['elements'][0]['value']);
                             $participant_slack_user_id = $postData['user']['id'];
 
-                            $registered = EventParticipant::where('event_id',$event_id)->where('slack_user_id',$participant_slack_user_id)->first();
+                            $registered = EventParticipant::where('event_id',$event->id)->where('slack_user_id',$participant_slack_user_id)->first();
                             if($registered === null){//まだ参加登録していなければ登録
-                                EventParticipant::create(['event_id' => $event_id,'slack_user_id' => $participant_slack_user_id]);
+                                EventParticipant::create(['event_id' =>  $event->id,'slack_user_id' => $participant_slack_user_id]);
                             }else{//既に参加登録していれば削除
                                 $registered->delete();
                             }
 
-                            $event_participant_ids = EventParticipant::select('slack_user_id')->where('event_id',$event_id)->get();
-                            $event_participants = "";
-                            foreach ($event_participant_ids as $event_participant_id) {//参加者一覧を一つの文字列に
-                                $event_participants .= "<@".$event_participant_id->slack_user_id."> ";
-                            }
-                            if($event_participants === ""){//参加者がいない場合
-                                $event_participants = 'まだいません。';
+                            if($event->notice_ts != null){//既にお知らせしていればお知らせ投稿を更新
+                                $blocks = $this->getRegisterToAttendTheNoticeEventBlocks($event);
+                                Log::info($event->notice_ts);
+                                $slack_client->chatUpdate([
+                                    'channel' => 'C01NCNM4WQ6',
+                                    'ts' => $event->notice_ts,
+                                    'blocks' => json_encode($blocks),
+                                ]);
                             }
 
-                            $blocks = $this->getRegisterToAttendTheEventBlocks($postData['message']['blocks'][0]['text']['text'],$event_id,$event_participants);
+                            if ($event->remind_ts != null) {//既にリマインドしていればリマインド投稿を更新
+                                $blocks = $this->getRegisterToAttendTheRemindEventBlocks($event);
 
-                            $slack_client->chatUpdate([
-                                'channel' => $postData['container']['channel_id'],
-                                'ts' => $postData['message']['ts'],
-                                'blocks' => json_encode($blocks),
-                            ]);
+                                Log::info($event->remind_ts);
+                                $slack_client->chatUpdate([
+                                    'channel' => 'C01NCNM4WQ6',
+                                    'ts' => $event->remind_ts,
+                                    'blocks' => json_encode($blocks),
+                                ]);
+                                Log::info(print_r($blocks,true));
+                            }
 
                             DB::commit();
                         } catch (\Throwable $th) {
+                            Log::info($th);
                             DB::rollBack();
                         }
                         break;
@@ -131,13 +138,22 @@ class InteractiveEndpointController extends Controller
         return 0;
     }
 
-    public function getRegisterToAttendTheEventBlocks($msg,$event_id,$event_participants){//イベントの参加者登録時に更新する内容を配列で返す(送信する際はjsonエンコードして送信)
+    public function getRegisterToAttendTheNoticeEventBlocks($event){//イベントの参加者登録時に更新するお知らせ登録の内容を配列で返す(送信する際はjsonエンコードして送信)
+        $event_participant_ids = EventParticipant::select('slack_user_id')->where('event_id',$event->id)->get();
+        $event_participants = "";
+        foreach ($event_participant_ids as $event_participant_id) {//参加者一覧を一つの文字列に
+            $event_participants .= "<@".$event_participant_id->slack_user_id."> ";
+        }
+        if($event_participants === ""){//参加者がいない場合
+            $event_participants = 'まだいません。';
+        }
+
         return [
             [
                 "type" => "section",
                 "text" => [
                     "type" => "mrkdwn",
-                    "text" => $msg
+                    "text" => "<!channel> \n【イベントのお知らせ】\n{$event->event_datetime->format('m月d日 H時i分~')}\n *{$event->name}* を開催します！\n\n{$event->description}\n\n参加を希望する方は下のボタンを押してください！"
                 ]
             ],
             [
@@ -150,7 +166,50 @@ class InteractiveEndpointController extends Controller
                             "text" => "参加する！",
                             "emoji" => true
                         ],
-                        "value" => $event_id,
+                        "value" => "$event->id",
+                        "action_id" => "Register_to_attend_the_event"
+                    ]
+                ]
+            ],
+            [
+                "type" => "section",
+                "text" => [
+                    "type" => "mrkdwn",
+                    "text" => "参加者\n $event_participants"
+                ]
+            ]
+        ];
+    }
+
+    public function getRegisterToAttendTheRemindEventBlocks($event){//イベントの参加者登録時に更新するリマインド投稿の内容を配列で返す(送信する際はjsonエンコードして送信)
+        $event_participant_ids = EventParticipant::select('slack_user_id')->where('event_id',$event->id)->get();
+        $event_participants = "";
+        foreach ($event_participant_ids as $event_participant_id) {//参加者一覧を一つの文字列に
+            $event_participants .= "<@".$event_participant_id->slack_user_id."> ";
+        }
+        if($event_participants === ""){//参加者がいない場合
+            $event_participants = 'まだいません。';
+        }
+
+        return [
+            [
+                "type" => "section",
+                "text" => [
+                    "type" => "mrkdwn",
+                    "text" => "<!channel>\n【リマインド】\nこの後{$event->event_datetime->format('H時i分')}から、 *{$event->name}* を開催します！\n\n{$event->description}\n\n参加を希望する方は下のボタンを押してください！"
+                ]
+            ],
+            [
+                "type" => "actions",
+                "elements" => [
+                    [
+                        "type" => "button",
+                        "text" => [
+                            "type" => "plain_text",
+                            "text" => "参加する！",
+                            "emoji" => true
+                        ],
+                        "value" => "$event->id",
                         "action_id" => "Register_to_attend_the_event"
                     ]
                 ]
@@ -165,3 +224,4 @@ class InteractiveEndpointController extends Controller
         ];
     }
 }
+

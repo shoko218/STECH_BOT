@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Model\Event;
+use App\Model\EventParticipant;
 use DateTime;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
@@ -42,16 +43,64 @@ class RemindEvent extends Command
     public function handle()
     {
         try {
-            $today_held_events = Event::whereDate('event_datetime','=', date('Y-m-d'))->get();//今日開催のイベントを取得
+            $today_held_events = Event::whereDate('event_datetime','=', date('Y-m-d'))
+                ->whereNull('remind_ts')
+                ->get();//今日開催のイベントを取得
             $slack_client = ClientFactory::create(config('services.slack.token'));
             foreach ($today_held_events as $event) {
-                $slack_client->chatPostMessage([
+                $blocks = json_encode($this->getBlocks($event));
+                $chat = $slack_client->chatPostMessage([
                     'channel' => '#seg-test-channel',
-                    'text' => "<!channel>\n【リマインド】\n本日{$event->event_datetime->format('H時i分')}から、 *{$event->name}* を開催します！\n\n{$event->description}\n",
+                    'blocks' => $blocks,
                 ]);
+                $event->remind_ts = $chat->getTs();
+                $event->save();
             }
         } catch (\Throwable $th) {
             Log::info($th);
         }
+    }
+
+    public function getBlocks($event){//送信するblockを配列で返す
+        $event_participant_ids = EventParticipant::select('slack_user_id')->where('event_id',$event->id)->get();
+        $event_participants = "";
+        foreach ($event_participant_ids as $event_participant_id) {//参加者一覧を一つの文字列に
+            $event_participants .= "<@".$event_participant_id->slack_user_id."> ";
+        }
+        if($event_participants === ""){//参加者がいない場合
+            $event_participants = 'まだいません。';
+        }
+
+        return [
+            [
+                "type" => "section",
+                "text" => [
+                    "type" => "mrkdwn",
+                    "text" => "<!channel>\n【リマインド】\nこの後{$event->event_datetime->format('H時i分')}から、 *{$event->name}* を開催します！\n\n{$event->description}\n\n参加を希望する方は下のボタンを押してください！"
+                ]
+            ],
+            [
+                "type" => "actions",
+                "elements" => [
+                    [
+                        "type" => "button",
+                        "text" => [
+                            "type" => "plain_text",
+                            "text" => "参加する！",
+                            "emoji" => true
+                        ],
+                        "value" => "$event->id",
+                        "action_id" => "Register_to_attend_the_event"
+                    ]
+                ]
+            ],
+            [
+                "type" => "section",
+                "text" => [
+                    "type" => "mrkdwn",
+                    "text" => "参加者\n $event_participants"
+                ]
+            ]
+        ];
     }
 }

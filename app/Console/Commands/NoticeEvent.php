@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Model\Event;
+use App\Model\EventParticipant;
 use DateTime;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
@@ -43,13 +44,35 @@ class NoticeEvent extends Command
     {
         try {
             $slack_client = ClientFactory::create(config('services.slack.token'));
-            $notice_events = Event::whereDate('notice_datetime', date('Y-m-d'))->whereTime('notice_datetime', date('H:i:').'00')->get();//今知らせる予定のイベントを取得
+
+            //知らせるべきイベントを取得
+            $notice_events = Event::whereNull('notice_ts')//まだ知らせていないイベント
+                ->where(function($query){//日付指定
+                    $query->where(function ($q) {//前日以前に知らせるべきイベント
+                        $q->whereDate('notice_datetime', '<', date('Y-m-d'));
+                    })->orWhere(function ($q) {//今日知らせるべきで、現在時刻以前に知らせるべきイベント
+                        $q->whereDate('notice_datetime', date('Y-m-d'))
+                        ->whereTime('notice_datetime', '<=', date('H:i:s'));
+                    });
+                })
+                ->where(function($query){//イベントがまだ終わっていないものを選択
+                    $query->where(function ($q) {//明日以降に開催されるイベント
+                        $q->whereDate('event_datetime', '>', date('Y-m-d'));
+                    })->orWhere(function ($q) {//今日開催の、現在時刻より後に開催されるイベント
+                        $q->whereDate('event_datetime', date('Y-m-d'))
+                        ->whereTime('event_datetime', '>', date('H:i:s'));
+                    });
+                })
+                ->get();
+
             foreach ($notice_events as $event) {
-                $blocks = $this->getBlocks($event);
-                $slack_client->chatPostMessage([
+                $blocks = json_encode($this->getBlocks($event));
+                $chat = $slack_client->chatPostMessage([
                     'channel' => '#seg-test-channel',
-                    'blocks' => json_encode($blocks),
+                    'blocks' => $blocks,
                 ]);
+                $event->notice_ts = $chat->getTs();
+                $event->save();
             }
         } catch (\Throwable $th) {
             Log::info($th);
@@ -57,6 +80,15 @@ class NoticeEvent extends Command
     }
 
     public function getBlocks($event){//送信するblockを配列で返す
+        $event_participant_ids = EventParticipant::select('slack_user_id')->where('event_id',$event->id)->get();
+        $event_participants = "";
+        foreach ($event_participant_ids as $event_participant_id) {//参加者一覧を一つの文字列に
+            $event_participants .= "<@".$event_participant_id->slack_user_id."> ";
+        }
+        if($event_participants === ""){//参加者がいない場合
+            $event_participants = 'まだいません。';
+        }
+
         return [
             [
                 "type" => "section",
@@ -84,7 +116,7 @@ class NoticeEvent extends Command
                 "type" => "section",
                 "text" => [
                     "type" => "mrkdwn",
-                    "text" => "参加者\n まだいません。"
+                    "text" => "参加者\n $event_participants"
                 ]
             ]
         ];
