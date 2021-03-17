@@ -6,7 +6,7 @@ use App\Model\Event;
 use DateTime;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
-use Vluzrmos\SlackApi\Facades\SlackChat;
+use JoliCode\Slack\ClientFactory;
 
 class RemindEvent extends Command
 {
@@ -43,8 +43,12 @@ class RemindEvent extends Command
     {
         try {
             $today_held_events = Event::whereDate('event_datetime','=', date('Y-m-d'))->get();//今日開催のイベントを取得
+            $slack_client = ClientFactory::create(config('services.slack.token'));
             foreach ($today_held_events as $event) {
-                SlackChat::message("#seg-test-channel","<!channel>\n【リマインド】\n本日{$event->event_datetime->format('H時i分')}から、 *{$event->name}* を開催します！\n\n{$event->description}\n");
+                $slack_client->chatPostMessage([
+                    'channel' => '#seg-test-channel',
+                    'text' => "<!channel>\n【リマインド】\n本日{$event->event_datetime->format('H時i分')}から、 *{$event->name}* を開催します！\n\n{$event->description}\n",
+                ]);
             }
         } catch (\Throwable $th) {
             Log::info($th);

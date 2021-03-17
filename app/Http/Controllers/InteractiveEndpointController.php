@@ -8,8 +8,7 @@ use DateTime;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Vluzrmos\SlackApi\Facades\SlackChat;
-use Vluzrmos\SlackApi\Facades\SlackUser;
+use JoliCode\Slack\ClientFactory;
 
 class InteractiveEndpointController extends Controller
 {
@@ -17,6 +16,8 @@ class InteractiveEndpointController extends Controller
         try {
             $payload = $request->input('payload');
             $postData = json_decode($payload, true);
+
+            $slack_client = ClientFactory::create(config('services.slack.token'));
 
             //interactive endpointは全てのアクションにおいて共通なので、この先もっとアクションが増えることを考えるとアクションタイプで分類した後にアクションの識別子で各処理を区別する方がわかりやすいかと思いそうしています
             if($postData['type'] === "view_submission"){//モーダルのフォームが送信された場合
@@ -67,13 +68,20 @@ class InteractiveEndpointController extends Controller
                                 'url' => $event_url
                             ]);
 
-                            SlackChat::message($postData['user']['id'], "イベントを登録しました！\n\n```イベント名:{$event_name}\nイベント詳細:{$event_description}\nイベントURL:{$event_url}\nイベント日時:{$event_datetime->format('Y年m月d日 H:i')}\nお知らせする日時:{$notice_datetime->format('Y年m月d日 H:i')}```");
+                            $slack_client->chatPostMessage([
+                                'channel' => $postData['user']['id'],
+                                'text' => "イベントを登録しました！\n\n```イベント名:{$event_name}\nイベント詳細:{$event_description}\nイベントURL:{$event_url}\nイベント日時:{$event_datetime->format('Y年m月d日 H:i')}\nお知らせする日時:{$notice_datetime->format('Y年m月d日 H:i')}```",
+                            ]);
 
                             DB::commit();
                         } catch (\Throwable $th) {
                             DB::rollBack();
                             Log::info($th);
-                            SlackChat::message($postData['user']['id'], "エラーが発生し、イベントを登録できませんでした。もう一度お試しください。");
+
+                            $slack_client->chatPostMessage([
+                                'channel' => $postData['user']['id'],
+                                'text' => "エラーが発生し、イベントを登録できませんでした。もう一度お試しください。",
+                            ]);
                         }
                         break;
                 }
@@ -82,7 +90,6 @@ class InteractiveEndpointController extends Controller
                     case 'Register_to_attend_the_event': //イベントの参加者登録
                         response('',200)->send();//3秒以内にレスポンスを返さないとタイムアウト扱いになるので最初に空レスポンスをしておく
                         DB::beginTransaction();
-
                         try {
                             $event_id = $postData['message']['blocks'][1]['elements'][0]['value'];
                             $participant_slack_user_id = $postData['user']['id'];
@@ -105,7 +112,11 @@ class InteractiveEndpointController extends Controller
 
                             $blocks = $this->getRegisterToAttendTheEventBlocks($postData['message']['blocks'][0]['text']['text'],$event_id,$event_participants);
 
-                            SlackChat::update($postData['container']['channel_id'],"",$postData['message']['ts'],['blocks' => json_encode($blocks)]);
+                            $slack_client->chatUpdate([
+                                'channel' => $postData['container']['channel_id'],
+                                'ts' => $postData['message']['ts'],
+                                'blocks' => json_encode($blocks),
+                            ]);
 
                             DB::commit();
                         } catch (\Throwable $th) {

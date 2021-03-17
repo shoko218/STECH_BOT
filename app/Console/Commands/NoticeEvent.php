@@ -6,7 +6,7 @@ use App\Model\Event;
 use DateTime;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
-use Vluzrmos\SlackApi\Facades\SlackChat;
+use JoliCode\Slack\ClientFactory;
 
 class NoticeEvent extends Command
 {
@@ -42,10 +42,14 @@ class NoticeEvent extends Command
     public function handle()
     {
         try {
+            $slack_client = ClientFactory::create(config('services.slack.token'));
             $notice_events = Event::whereDate('notice_datetime', date('Y-m-d'))->whereTime('notice_datetime', date('H:i:').'00')->get();//今知らせる予定のイベントを取得
             foreach ($notice_events as $event) {
                 $blocks = $this->getBlocks($event);
-                SlackChat::message("#seg-test-channel","",['blocks' => json_encode($blocks)]);
+                $slack_client->chatPostMessage([
+                    'channel' => '#seg-test-channel',
+                    'blocks' => json_encode($blocks),
+                ]);
             }
         } catch (\Throwable $th) {
             Log::info($th);
