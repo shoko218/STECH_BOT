@@ -31,9 +31,24 @@ class InteractiveEndpointController extends Controller
                             $event_url = $postData['view']['state']['values']['url']['url']['value'];
 
                             $event_datetime = new DateTime($postData['view']['state']['values']['event_date']['event_date']['selected_date']);//年月日だけでDateTime型作成
+
+                            //スマホから年を入れると和暦表示になるのですが、なぜか和暦の値がそのまま渡ってくる(2021年の場合、令和3年なので年月日が'0003-m-d'で渡ってきます)ので、
+                            //渡ってきた年に+2018した年が今年から100年以内だった場合は和暦で渡ってきているとみなし、+2018して処理を進めます。
+                            //この仕様が改善された場合は以下3行の処理は削除してください。
+                            //年号が変わった場合は新しい年号が始まった年-1で処理を書き換えてください。
+                            if((int)$event_datetime->format('Y')+2018 < (int)date('Y')+100){
+                                $event_datetime->modify("+ 2018 year");
+                            }
+
                             $event_datetime->modify("+".$postData['view']['state']['values']['event_time']['event_hour']['selected_option']['value']." hour")->modify("+".$postData['view']['state']['values']['event_time']['event_minute']['selected_option']['value']." minute");//時、分を各フォームから取得し、上で作成したDateTime型に情報を追加
 
                             $notice_datetime = new DateTime($postData['view']['state']['values']['notice_date']['notice_date']['selected_date']);//年月日だけでDateTime型作成
+
+                            //上同様、和暦->西暦の処理
+                            if((int)$notice_datetime->format('Y')+2018 < (int)date('Y')+100){
+                                $notice_datetime->modify("+ 2018 year");
+                            }
+
                             $notice_datetime->modify("+".$postData['view']['state']['values']['notice_time']['notice_hour']['selected_option']['value']." hour")->modify("+".$postData['view']['state']['values']['notice_time']['notice_minute']['selected_option']['value']." minute");//時、分を各フォームから取得し、上で作成したDateTime型に情報を追加
 
                             $errors = [];//バリデーション処理
