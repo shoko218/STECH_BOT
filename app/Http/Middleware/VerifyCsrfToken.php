@@ -17,8 +17,9 @@ class VerifyCsrfToken extends Middleware
      * The URIs that should be excluded from CSRF verification.
      *
      * @var array
+     * @see MeetingController/notifyMeetingSettingsCompletion
      */
     protected $except = [
-        //
+        '/notify_meeting_settings_completion',
     ];
 }
