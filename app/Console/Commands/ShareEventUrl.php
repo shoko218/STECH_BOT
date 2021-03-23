@@ -22,7 +22,7 @@ class ShareEventUrl extends Command
      *
      * @var string
      */
-    protected $description = 'Command description';
+    protected $description = 'This command shares event urls.';
 
     /**
      * Create a new command instance.
@@ -42,18 +42,8 @@ class ShareEventUrl extends Command
     public function handle()
     {
         try {
-            $start_time = new DateTime();
-            $start_time->modify('+15 minutes');
-            $coming_soon_events = Event::whereDate('event_datetime',$start_time->format('Y-m-d'))->whereTime('event_datetime',$start_time->format('H:i:').'00')->get();//15分後に始まるイベントを取得
-
-            $slack_client = ClientFactory::create(config('services.slack.token'));
-
-            foreach($coming_soon_events as $event){
-                $slack_client->chatPostMessage([
-                    'channel' => '#seg-test-channel',
-                    'text' => "<!channel> 【イベントURLのお知らせ】\nこの後{$event->event_datetime->format('H時i分')}から開催する *{$event->name}* のURLはこちらです!\n{$event->url}",
-                ]);
-            }
+            $event_controller = app()->make('App\Http\Controllers\EventController');
+            $event_controller->shareEventUrl();
         } catch (\Throwable $th) {
             Log::info($th);
         }

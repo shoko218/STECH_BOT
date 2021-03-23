@@ -11,4 +11,8 @@ class Event extends Model
     ];
 
     protected $dates = ['event_datetime','notice_datetime'];
+
+    public function eventParticipants(){
+        return $this->hasMany('App\Model\EventParticipant');
+    }
 }
