@@ -26,9 +26,9 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule)
     {
-        $schedule->command('command:notice_event')->everyMinute();
+        $schedule->command('command:notice_event')->everyFifteenMinutes();
         $schedule->command('command:remind_event')->dailyAt('10:00');
-        $schedule->command('command:share_event_url')->everyMinute();
+        $schedule->command('command:share_event_url')->everyFifteenMinutes();
     }
 
     /**
