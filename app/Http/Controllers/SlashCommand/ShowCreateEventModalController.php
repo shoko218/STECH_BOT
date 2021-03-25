@@ -11,8 +11,7 @@ class ShowCreateEventModalController extends Controller
     public function __invoke(Request $request)
     {
         try {
-            $event_controller = app()->make('App\Http\Controllers\EventController');
-            $event_controller->showCreateEventModal($request->input('trigger_id'));
+            app()->make('App\Http\Controllers\EventController')->showCreateEventModal($request->input('trigger_id'));
         } catch (\Throwable $th) {
             Log::info($th);
         }

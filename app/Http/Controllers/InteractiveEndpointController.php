@@ -18,15 +18,13 @@ class InteractiveEndpointController extends Controller
             if($payload['type'] === "view_submission"){//モーダルのフォームが送信された場合
                 switch ($payload['view']['callback_id']) {
                     case 'create_event'://イベント作成フォーム
-                        $event_controller = app()->make('App\Http\Controllers\EventController');
-                        $event_controller->createEvent($payload);
+                        app()->make('App\Http\Controllers\EventController')->createEvent($payload);
                         break;
                 }
             }else if($payload['type'] === "block_actions"){//block要素でアクションがあった場合
                 switch ($payload['actions'][0]['action_id']) {
                     case 'register_to_attend_event': //イベントの参加者登録
-                        $event_participant_controller = app()->make('App\Http\Controllers\EventParticipantController');
-                        $event_participant_controller->registerToAttendEvent($payload);
+                        app()->make('App\Http\Controllers\EventParticipantController')->registerToAttendEvent($payload);
                         break;
                 }
             }
