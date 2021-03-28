@@ -39,7 +39,7 @@ class MeetingController extends Controller
             $this->slack_client->chatPostMessage([
                 'channel' => self::$administrator,
                 'text' => '来週の定期ミーティングを予定通り開催しますか？',
-                'blocks' => json_encode($this->createMeetingConfirmationMessage())
+                'blocks' => json_encode($this->createMeetingConfirmationMessageBlocks())
             ]);
 
         } catch (SlackErrorResponse $e) {
@@ -52,7 +52,7 @@ class MeetingController extends Controller
     *
     *  @return array
     */
-    public function createMeetingConfirmationMessage ()
+    public function createMeetingConfirmationMessageBlocks ()
     {
         return [
             [
