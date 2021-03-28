@@ -14,3 +14,10 @@
 Route::get('/', function () {
     return view('welcome');
 });
+
+// ここをInteractiveEndpointに変更
+Route::any('/send_question_to_channel', 'AnonymousQuestionController@sendQuestionToChannel');
+
+Route::prefix('/slash')->group(function () {
+    Route::post('/ask_question', 'AnonymousQuestionController@openQuestionForm');
+});
