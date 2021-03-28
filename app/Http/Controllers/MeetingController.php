@@ -311,28 +311,29 @@ class MeetingController extends Controller
            
             $scheduling_result = $this->scheduleMeetings($next_meeting[0]['value'], $next_monday, $next_thursday);
 
-            if ($scheduling_result == false) {
+            if (!$scheduling_result) {
                 $this->slack_client->chatPostMessage([
                     'channel' => self::$administrator, 
                     'text' => '次回ミーティングはパスされました！'
                 ]);
-                return;
+
+            } else {
+                $next_meeting_text = $next_meeting[0]['text']['text'];
+                $this->slack_client->chatPostMessage([
+                    'channel' => self::$administrator,
+                    'blocks' => json_encode([
+                        [
+                            "type" => "section",
+                            "text" => [
+                                "type" => "plain_text",
+                                "text" => "次回ミーティングの予定を確定しました！： $next_meeting_text ",
+                                "emoji" => true
+                            ]
+                        ]
+                    ])
+                ]);
             }
             
-            $next_meeting_text = $next_meeting[0]['text']['text'];
-            $this->slack_client->chatPostMessage([
-                'channel' => self::$administrator,
-                'blocks' => json_encode([
-                    [
-                        "type" => "section",
-                        "text" => [
-                            "type" => "plain_text",
-                            "text" => "次回ミーティングの予定を確定しました！： $next_meeting_text ",
-                            "emoji" => true
-                        ]
-                    ]
-                ])
-            ]);
             
         } catch (\Throwable $th) {
             Log::info($th);
