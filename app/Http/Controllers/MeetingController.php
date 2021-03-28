@@ -39,65 +39,75 @@ class MeetingController extends Controller
             $this->slack_client->chatPostMessage([
                 'channel' => self::$administrator,
                 'text' => '来週の定期ミーティングを予定通り開催しますか？',
-                'blocks' => json_encode([
-                    [
-                        "type" => "section",
-                        "text" => [
-                            "type" => "mrkdwn",
-                            "text" => ":alarm_clock: 来週のミーティングを予定通り開催しますか？"
-                        ]
-                    ],
-                    [
-                        "type" => "actions",
-                        "elements" => [
-                            [
-                                "type" => "button",
-                                "text" => [
-                                    "type" => "plain_text",
-                                    "text" => ":o: 両日とも開催",
-                                    "emoji" => true
-                                ],
-                                "value" => "both_meetings",
-                                "action_id" => "actionId-0"
-                            ],
-                            [
-                                "type" => "button",
-                                "text" => [
-                                    "type" => "plain_text",
-                                    "text" => ":eight_pointed_black_star: 月曜日のみ",
-                                    "emoji" => true
-                                ],
-                                "value" => "first_meeting",
-                                "action_id" => "actionId-1"
-                            ],
-                            [
-                                "type" => "button",
-                                "text" => [
-                                    "type" => "plain_text",
-                                    "text" => ":sparkle: 木曜日のみ",
-                                    "emoji" => true
-                                ],
-                                "value" => "second_meeting",
-                                "action_id" => "actionId-2"
-                            ],
-                            [
-                                "type" => "button",
-                                "text" => [
-                                    "type" => "plain_text",
-                                    "text" => ":x: 開催しない",
-                                    "emoji" => true
-                                ],
-                                "value" => "not_both_meetings",
-                                "action_id" => "actionId-3"
-                            ]
-                        ]
-                    ]
-                ])
+                'blocks' => json_encode($this->createMeetingConfirmationMessage())
             ]);
 
         } catch (SlackErrorResponse $e) {
             echo $e->getMessage();
         }
+    }
+
+   /**
+    *  ミーティング開催を確認するメッセージのブロックを配列として作成する
+    *
+    *  @return array
+    */
+    public function createMeetingConfirmationMessage ()
+    {
+        return [
+            [
+                "type" => "section",
+                "text" => [
+                    "type" => "mrkdwn",
+                    "text" => ":alarm_clock: 来週のミーティングを予定通り開催しますか？"
+                ]
+            ],
+            [
+                "type" => "actions",
+                "elements" => [
+                    [
+                        "type" => "button",
+                        "text" => [
+                            "type" => "plain_text",
+                            "text" => ":o: 両日とも開催",
+                            "emoji" => true
+                        ],
+                        "value" => "both_meetings",
+                        "action_id" => "actionId-0"
+                    ],
+                    [
+                        "type" => "button",
+                        "text" => [
+                            "type" => "plain_text",
+                            "text" => ":eight_pointed_black_star: 月曜日のみ",
+                            "emoji" => true
+                        ],
+                        "value" => "first_meeting",
+                        "action_id" => "actionId-1"
+                    ],
+                    [
+                        "type" => "button",
+                        "text" => [
+                            "type" => "plain_text",
+                            "text" => ":sparkle: 木曜日のみ",
+                            "emoji" => true
+                        ],
+                        "value" => "second_meeting",
+                        "action_id" => "actionId-2"
+                    ],
+                    [
+                        "type" => "button",
+                        "text" => [
+                            "type" => "plain_text",
+                            "text" => ":x: 開催しない",
+                            "emoji" => true
+                        ],
+                        "value" => "not_both_meetings",
+                        "action_id" => "actionId-3"
+                    ]
+                ]
+            ]
+        ];
     }
 
    /**
