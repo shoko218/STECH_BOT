@@ -20,6 +20,13 @@ class MeetingController extends Controller
     */
     public static $notice_channel = '#general';
 
+    private $slack_client;
+
+    public function __construct()
+    {
+        $this->slack_client = ClientFactory::create(config('services.slack.token'));
+    }
+
    /**
     *  ミーティングを開催するかどうかメッセージを送信する
     *
@@ -28,10 +35,8 @@ class MeetingController extends Controller
     */
     public function AskToHoldMeeting () 
     {
-        $slack_client = ClientFactory::create(config('services.slack.token'));
-
         try {
-            $slack_client->chatPostMessage([
+            $this->slack_client->chatPostMessage([
                 'channel' => self::$administrator,
                 'text' => '来週の定期ミーティングを予定通り開催しますか？',
                 'blocks' => json_encode([
@@ -193,35 +198,33 @@ class MeetingController extends Controller
     public function scheduleMeetings($button_value, $first_meeting_day, $second_meeting_day) 
     {
         try {
-            $slack_client = ClientFactory::create(config('services.slack.token'));
-
             $first_meeting_day_name = '月曜日';
             $second_meeting_day_name = '木曜日';
 
             switch ($button_value) {
                 case 'both_meetings':
-                    $slack_client->chatScheduleMessage(
+                    $this->slack_client->chatScheduleMessage(
                         $this->createMeetingMessage(self::$notice_channel, $first_meeting_day, $first_meeting_day_name)
                     );
-                    $slack_client->chatScheduleMessage(
+                    $this->slack_client->chatScheduleMessage(
                         $this->createMeetingMessage(self::$notice_channel, $second_meeting_day, $second_meeting_day_name)
                     );
     
                     return true;
                 case 'first_meeting':
-                    $slack_client->chatScheduleMessage(
+                    $this->slack_client->chatScheduleMessage(
                         $this->createMeetingMessage(self::$notice_channel, $first_meeting_day, $first_meeting_day_name)
                     );
                     return true;
                 case 'second_meeting':
-                    $slack_client->chatScheduleMessage(
+                    $this->slack_client->chatScheduleMessage(
                         $this->createMeetingMessage(self::$notice_channel, $second_meeting_day, $second_meeting_day_name)
                     );
                     return true;
                 case 'not_both_meetings':
                     return false;
                 default:
-                    $slack_client->chatPostMessage([
+                    $this->slack_client->chatPostMessage([
                         'channel' => self::$administrator,
                         'text' => 'エラー発生によりミーティングのスケジュールを行うことができませんでした',
                     ]);
@@ -245,8 +248,6 @@ class MeetingController extends Controller
     public function scheduledMeetingExists ($post_at) 
     {
         try {
-            $slack_client = ClientFactory::create(config('services.slack.token'));
-            
             // chatScheduledMessageListが使えず取り急ぎGuzzleで実装しています
             // slack-apiから帰ってくるid(string)が、パッケージ側のsetId()で処理されるときにint or null 指定されており弾かれているようです
             $guzzle = new \GuzzleHttp\Client();
@@ -263,18 +264,18 @@ class MeetingController extends Controller
                 $scheduled_meeting_date = CarbonImmutable::createFromTimestamp($scheduled_meeting['post_at'])->format('Y年m月d日');
     
                 if ($scheduled_meeting['post_at'] == $post_at) {
-                    $slack_client->chatDeleteScheduledMessage([
+                    $this->slack_client->chatDeleteScheduledMessage([
                         'channel' => $scheduled_meeting['channel_id'],
                         'scheduled_message_id' => $scheduled_meeting['id']
                     ]);
     
-                    $slack_client->chatPostMessage([
+                    $this->slack_client->chatPostMessage([
                         'channel' => self::$administrator,
                         'text' => "$scheduled_meeting_date 開催予定のミーティングは削除されました！"
                     ]);
     
                 } else {
-                    $slack_client->chatPostMessage([
+                    $this->slack_client->chatPostMessage([
                         'channel' => self::$administrator,
                         'text' => "$scheduled_meeting_date 開催予定のミーティングは削除されませんでした！"
                     ]);
@@ -303,7 +304,6 @@ class MeetingController extends Controller
             response('', 200)->send();
             
             $next_meeting = $this->getActionsResponse($request);
-            $slack_client = ClientFactory::create(config('services.slack.token'));
 
             $today = CarbonImmutable::today('Asia/Tokyo');
             // todayを基準に今週の月曜日・木曜日を取得し7日分加算
@@ -316,7 +316,7 @@ class MeetingController extends Controller
             $scheduling_result = $this->scheduleMeetings($next_meeting[0]['value'], $next_monday, $next_thursday);
 
             if ($scheduling_result == false) {
-                $slack_client->chatPostMessage([
+                $this->slack_client->chatPostMessage([
                     'channel' => self::$administrator, 
                     'text' => '次回ミーティングはパスされました！'
                 ]);
@@ -324,7 +324,7 @@ class MeetingController extends Controller
             }
             
             $next_meeting_text = $next_meeting[0]['text']['text'];
-            $slack_client->chatPostMessage([
+            $this->slack_client->chatPostMessage([
                 'channel' => self::$administrator,
                 'blocks' => json_encode([
                     [
@@ -340,7 +340,7 @@ class MeetingController extends Controller
             
         } catch (\Throwable $th) {
             Log::info($th);
-            $slack_client->chatPostMessage([
+            $this->slack_client->chatPostMessage([
                 'channel' => self::$administrator,
                 'text' => 'ミーティングの設定は正常に行われていません。'
             ]);
