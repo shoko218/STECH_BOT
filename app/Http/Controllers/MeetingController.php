@@ -130,69 +130,63 @@ class MeetingController extends Controller
     }
 
    /**
-    *  ミーティングを通知するためのメッセージを作成し、配列として返す
+    *  ミーティングを通知するメッセージを作成するためのブロックを配列として作成する
     *
-    * @param string $post_to メッセージの送信先
-    * @param int $post_at メッセージの送信予定日時
-    * @param string $meeting_day ミーティングを開催する曜日
+    * @param string $meeting_day_name ミーティングを開催する曜日
     * @return array
     */
-    public function createMeetingMessage($post_to, $post_at, $meeting_day) 
+    public function createMeetingMessageBlocks($meeting_day_name) 
     {
         return [
-            'channel' => $post_to,
-            'post_at' => $post_at,
-            'blocks' => json_encode([
-                [
-                    "type" => "section",
-                    "text" => [
-                        "type" => "mrkdwn",
-                        "text" => ":bell: *$meeting_day MTG参加の皆様リマインドです* :bell:"
-                    ]
-                ],
-                [
-                    "type" => "section",
-                    "text" => [
-                        "type" => "mrkdwn",
-                        "text" => "定例ミーティングは本日の *20:00* - です"
-                    ]
-                ],
-                [
-                    "type" => "divider"
-                ],
-                [
-                    "type" => "section",
-                    "text" => [
-                        "type" => "mrkdwn",
-                        "text" => "・ 個人開発に注力している方\n・STECHのチーム開発プロジェクトに参加している方\nぜひご参加お願いいたします。\n\n *URL: <https://zoom.us/j/97315206739>*"
-                    ],
-                    "accessory" => [
-                        "type" => "image",
-                        "image_url" => "https://api.slack.com/img/blocks/bkb_template_images/notifications.png",
-                        "alt_text" => "calendar thumbnail"
-                    ]
-                ],
-                [
-                    "type" => "divider"
-                ],
-                [
-                    "type" => "section",
-                    "text" => [
-                        "type" => "mrkdwn",
-                        "text" => "※月木の参加が難しい方、Googleフォームでの回答をお願いします。"
-                    ],
-                    "accessory" => [
-                        "type" => "button",
-                        "text" => [
-                            "type" => "plain_text",
-                            "text" => "回答する",
-                            "emoji" => true
-                        ],
-                        "url" => "https://forms.gle/MgMhcocvmJUfBbYZ6",
-                    ]
+            [
+                "type" => "section",
+                "text" => [
+                    "type" => "mrkdwn",
+                    "text" => ":bell: *$meeting_day_name MTG参加の皆様リマインドです* :bell:"
                 ]
-            ])
-            ];
+            ],
+            [
+                "type" => "section",
+                "text" => [
+                    "type" => "mrkdwn",
+                    "text" => "定例ミーティングは本日の *20:00* - です"
+                ]
+            ],
+            [
+                "type" => "divider"
+            ],
+            [
+                "type" => "section",
+                "text" => [
+                    "type" => "mrkdwn",
+                    "text" => "・ 個人開発に注力している方\n・STECHのチーム開発プロジェクトに参加している方\nぜひご参加お願いいたします。\n\n *URL: <https://zoom.us/j/97315206739>*"
+                ],
+                "accessory" => [
+                    "type" => "image",
+                    "image_url" => "https://api.slack.com/img/blocks/bkb_template_images/notifications.png",
+                    "alt_text" => "calendar thumbnail"
+                ]
+            ],
+            [
+                "type" => "divider"
+            ],
+            [
+                "type" => "section",
+                "text" => [
+                    "type" => "mrkdwn",
+                    "text" => "※月木の参加が難しい方、Googleフォームでの回答をお願いします。"
+                ],
+                "accessory" => [
+                    "type" => "button",
+                    "text" => [
+                        "type" => "plain_text",
+                        "text" => "回答する",
+                        "emoji" => true
+                    ],
+                    "url" => "https://forms.gle/MgMhcocvmJUfBbYZ6",
+                ]
+            ]
+        ];
     }
 
    /**
@@ -201,8 +195,8 @@ class MeetingController extends Controller
     * @param string $meeting Actionsのパラメータの一つで、どのボタンが押されたか判別するためのvalue
     * @param int $first_meeting_day 1回目のミーティングお知らせ予定日時(UNIXTIME形式)
     * @param int $second_meeting_day 2回目のミーティングお知らせ予定日時(UNIXTIME形式)
-    * @param string $first_meeting_day_name 1回目のミーティングの曜日。現在は月曜日
-    * @param string $second_meeting_day_name 2回目のミーティングの曜日。現在は木曜日
+    * @var string $first_meeting_day_name 1回目のミーティングの曜日。現在は月曜日
+    * @var string $second_meeting_day_name 2回目のミーティングの曜日。現在は木曜日
     * @return true|false ミーティングをスケジュールした場合はtrue、開催がない場合とvalueが正しく判定されなかった場合はfalse
     */
     public function scheduleMeetings($button_value, $first_meeting_day, $second_meeting_day) 
@@ -213,23 +207,30 @@ class MeetingController extends Controller
 
             switch ($button_value) {
                 case 'both_meetings':
-                    $this->slack_client->chatScheduleMessage(
-                        $this->createMeetingMessage(self::$notice_channel, $first_meeting_day, $first_meeting_day_name)
-                    );
-                    $this->slack_client->chatScheduleMessage(
-                        $this->createMeetingMessage(self::$notice_channel, $second_meeting_day, $second_meeting_day_name)
-                    );
-    
+                    $this->slack_client->chatScheduleMessage([
+                        'channel' => self::$notice_channel,
+                        'post_at' => $first_meeting_day,
+                        'blocks' => json_encode($this->createMeetingMessageBlocks($first_meeting_day_name))
+                    ]);
+                    $this->slack_client->chatScheduleMessage([
+                        'channel' => self::$notice_channel,
+                        'post_at' => $second_meeting_day,
+                        'blocks' => json_encode($this->createMeetingMessageBlocks($second_meeting_day_name))
+                    ]);    
                     return true;
                 case 'first_meeting':
-                    $this->slack_client->chatScheduleMessage(
-                        $this->createMeetingMessage(self::$notice_channel, $first_meeting_day, $first_meeting_day_name)
-                    );
+                    $this->slack_client->chatScheduleMessage([
+                        'channel' => self::$notice_channel,
+                        'post_at' => $first_meeting_day,
+                        'blocks' => json_encode($this->createMeetingMessageBlocks($first_meeting_day_name))
+                    ]);
                     return true;
                 case 'second_meeting':
-                    $this->slack_client->chatScheduleMessage(
-                        $this->createMeetingMessage(self::$notice_channel, $second_meeting_day, $second_meeting_day_name)
-                    );
+                    $this->slack_client->chatScheduleMessage([
+                        'channel' => self::$notice_channel,
+                        'post_at' => $second_meeting_day,
+                        'blocks' => json_encode($this->createMeetingMessageBlocks($second_meeting_day_name))
+                    ]);
                     return true;
                 case 'not_both_meetings':
                     return false;
@@ -339,7 +340,7 @@ class MeetingController extends Controller
             Log::info($th);
             $this->slack_client->chatPostMessage([
                 'channel' => self::$administrator,
-                'text' => 'ミーティングの設定は正常に行われていません。'
+                'text' => 'ミーティングの設定は正常に行われませんでした。'
             ]);
         }
     }
