@@ -250,7 +250,6 @@ class MeetingController extends Controller
     *  同じ日時にスケジュールされているミーティングがないか確認し、重複している場合は削除する
     *
     *  お知らせメッセージのスケジューリングリストを確認し、同じ日時のメッセージがある場合は削除
-    *  削除した場合も、削除しない場合も、処理結果のメッセージを送信
     *
     * @param int $post_at ミーティング開催通知の投稿予定日時。この値でスケジューリングリストとの重複を確認する
     * @todo スケジューリングリストを取得する際に、slack-php-apiのchatScheduledMessageListで実装する
@@ -270,24 +269,11 @@ class MeetingController extends Controller
             $scheduled_list = json_decode($response->getBody()->getContents(), true);
             $scheduled_meetings = $scheduled_list['scheduled_messages'];
                 
-            foreach ($scheduled_meetings as $scheduled_meeting) {
-                $scheduled_meeting_date = CarbonImmutable::createFromTimestamp($scheduled_meeting['post_at'])->format('Y年m月d日');
-    
+            foreach ($scheduled_meetings as $scheduled_meeting) {    
                 if ($scheduled_meeting['post_at'] == $post_at) {
                     $this->slack_client->chatDeleteScheduledMessage([
                         'channel' => $scheduled_meeting['channel_id'],
                         'scheduled_message_id' => $scheduled_meeting['id']
-                    ]);
-    
-                    $this->slack_client->chatPostMessage([
-                        'channel' => self::$administrator,
-                        'text' => "$scheduled_meeting_date 開催予定のミーティングは削除されました！"
-                    ]);
-    
-                } else {
-                    $this->slack_client->chatPostMessage([
-                        'channel' => self::$administrator,
-                        'text' => "$scheduled_meeting_date 開催予定のミーティングは削除されませんでした！"
                     ]);
                 }
             }
