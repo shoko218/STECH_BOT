@@ -273,7 +273,7 @@ class MeetingController extends Controller
     }
 
    /**
-    *  現在スケジュール済みのミーティングリストを取得し、その日時を配列として返す
+    *  現在スケジュール済みのミーティングリストを取得し、配列として返す
     *
     * @return array
     * @todo スケジューリングリストを取得する際に、slack-php-apiのchatScheduledMessageListで実装する
