@@ -39,7 +39,7 @@ class MeetingController extends Controller
             $this->slack_client->chatPostMessage([
                 'channel' => self::$administrator,
                 'text' => '来週の定期ミーティングを予定通り開催しますか？',
-                'blocks' => json_encode($this->createMeetingConfirmationMessage())
+                'blocks' => json_encode($this->createMeetingConfirmationMessageBlocks())
             ]);
 
         } catch (SlackErrorResponse $e) {
@@ -52,7 +52,7 @@ class MeetingController extends Controller
     *
     *  @return array
     */
-    public function createMeetingConfirmationMessage ()
+    public function createMeetingConfirmationMessageBlocks ()
     {
         return [
             [
@@ -248,33 +248,21 @@ class MeetingController extends Controller
     }
 
    /**
-    *  同じ日時にスケジュールされているミーティングがないか確認し、重複している場合は削除する
+    *  スケジュール済みのミーティングと重複したものを削除する
     *
-    *  お知らせメッセージのスケジューリングリストを確認し、同じ日時のメッセージがある場合は削除
-    *
-    * @param int $post_at ミーティング開催通知の投稿予定日時。この値でスケジューリングリストとの重複を確認する
-    * @todo スケジューリングリストを取得する際に、slack-php-apiのchatScheduledMessageListで実装する
+    * @param int $next_monday 次週の月曜日の日時(UNIXTIME形式)
+    * @param int $next_thursday 次週の木曜日の日時(UNIXTIME形式)
     */
-    public function scheduledMeetingExists ($post_at) 
+    public function deleteOverlappedMeeting ($next_monday, $next_thursday)
     {
         try {
-            // chatScheduledMessageListが使えず取り急ぎGuzzleで実装しています
-            // slack-apiから帰ってくるid(string)が、パッケージ側のsetId()で処理されるときにint or null 指定されており弾かれているようです
-            $guzzle = new \GuzzleHttp\Client();
-            $response = $guzzle->request(
-                'GET', 
-                'https://slack.com/api/chat.scheduledMessages.list', 
-                ['headers' => ['Authorization' => 'Bearer ' . config('services.slack.token')]]
-            );
-    
-            $scheduled_list = json_decode($response->getBody()->getContents(), true);
-            $scheduled_meetings = $scheduled_list['scheduled_messages'];
-                
-            foreach ($scheduled_meetings as $scheduled_meeting) {    
-                if ($scheduled_meeting['post_at'] == $post_at) {
+            $scheduled_meeting_list = $this->getScheduledMeetingList();
+                    
+            foreach ($scheduled_meeting_list as $meeting) { 
+                if ($meeting['post_at'] == $next_monday || $meeting['post_at'] == $next_thursday) {
                     $this->slack_client->chatDeleteScheduledMessage([
-                        'channel' => $scheduled_meeting['channel_id'],
-                        'scheduled_message_id' => $scheduled_meeting['id']
+                        'channel' => $meeting['channel_id'],
+                        'scheduled_message_id' => $meeting['id']
                     ]);
                 }
             }
@@ -285,21 +273,43 @@ class MeetingController extends Controller
     }
 
    /**
+    *  現在スケジュール済みのミーティングリストを取得し、その日時を配列として返す
+    *
+    * @return array
+    * @todo スケジューリングリストを取得する際に、slack-php-apiのchatScheduledMessageListで実装する
+    */
+    public function getScheduledMeetingList ()
+    {
+        try {
+            $guzzle = new \GuzzleHttp\Client();
+            $response = $guzzle->request(
+                'GET', 
+                'https://slack.com/api/chat.scheduledMessages.list', 
+                ['headers' => ['Authorization' => 'Bearer ' . config('services.slack.token')]]
+            );
+    
+            $scheduled_list = json_decode($response->getBody()->getContents(), true);
+            return $scheduled_list['scheduled_messages'];
+
+        } catch (\Throwable $th) {
+            Log::info($th);
+        }
+    }
+
+   /**
     *  ミーティングの設定を行った後、完了メッセージを通知する
     *
     *  リクエストを受け取り、getActionResponseに渡す
-    *  scheduledMeetingExistsでメッセージの重複を確認・防止した後、scheduleMeetingsでミーティング開催通知を予約する
+    *  deleteOverlappedMeetingでメッセージの重複を防止した後、scheduleMeetingsでミーティング開催通知を予約する
     *  以上の処理が終わった後、ミーティング設定が完了したことを通知する
     *
     * @param Request $request
     * @var $scheduling_result scheduleMeetingsの結果(true|false)を受け取る変数。falseの場合は別途メッセージを送信
-    * @todo $requestのチェック、処理の流れが冗長なのでリファクタリング
     */
     public function notifyMeetingSettingsCompletion (Request $request) 
     {
         try {
             response('', 200)->send();
-            
             $next_meeting = $this->getActionsResponse($request);
 
             $today = CarbonImmutable::today('Asia/Tokyo');
@@ -307,9 +317,7 @@ class MeetingController extends Controller
             $next_monday = intval($today->startOfWeek()->addDays(7)->addHours(10)->format('U'));
             $next_thursday = intval($today->startOfWeek()->addDays(10)->addHours(10)->format('U'));
 
-            $this->scheduledMeetingExists($next_monday);
-            $this->scheduledMeetingExists($next_thursday);
-           
+            $this->deleteOverlappedMeeting($next_monday, $next_thursday);
             $scheduling_result = $this->scheduleMeetings($next_meeting[0]['value'], $next_monday, $next_thursday);
 
             if (!$scheduling_result) {
@@ -317,24 +325,26 @@ class MeetingController extends Controller
                     'channel' => self::$administrator, 
                     'text' => '次回ミーティングはパスされました！'
                 ]);
+                exit;
+            }
 
-            } else {
-                $next_meeting_text = $next_meeting[0]['text']['text'];
+            $next_meetings = $this->getScheduledMeetingList();
+            $next_meeting_date_list = array();
+            foreach ($next_meetings as $meeting) {
+                $next_meeting_date_list[] = CarbonImmutable::createFromTimestamp($meeting['post_at'])->format('Y年m月d日');
+            }
+
+            if (count($next_meeting_date_list) > 1) {
                 $this->slack_client->chatPostMessage([
                     'channel' => self::$administrator,
-                    'blocks' => json_encode([
-                        [
-                            "type" => "section",
-                            "text" => [
-                                "type" => "plain_text",
-                                "text" => "次回ミーティングの予定を確定しました！： $next_meeting_text ",
-                                "emoji" => true
-                            ]
-                        ]
-                    ])
+                    'text' => "次回ミーティングの予定を確定しました！\n {$next_meeting_date_list[0]} と {$next_meeting_date_list[1]} に通知します"
+                ]);
+            } else {
+                $this->slack_client->chatPostMessage([
+                    'channel' => self::$administrator,
+                    'text' => "次回ミーティングの予定を確定しました！\n {$next_meeting_date_list[0]} に通知します"
                 ]);
             }
-            
             
         } catch (\Throwable $th) {
             Log::info($th);
