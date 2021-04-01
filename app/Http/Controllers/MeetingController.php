@@ -10,16 +10,6 @@ use Carbon\CarbonImmutable;
 
 class MeetingController extends Controller
 {
-   /**
-    *  @var string $administrator ミーティング開催確認メッセージの送信先(STECHの管理者)
-    */
-    public static $administrator = 'U01MGNLUDFV';
-    
-   /**
-    *  @var string $notice_channel ミーティング開催を通知するチャンネル
-    */
-    public static $notice_channel = '#general';
-
     private $slack_client;
 
     public function __construct()
@@ -37,7 +27,7 @@ class MeetingController extends Controller
     {
         try {
             $this->slack_client->chatPostMessage([
-                'channel' => self::$administrator,
+                'channel' => config('const.slack_id.administrator'),
                 'text' => '来週の定期ミーティングを予定通り開催しますか？',
                 'blocks' => json_encode($this->createMeetingConfirmationMessageBlocks())
             ]);
@@ -208,26 +198,26 @@ class MeetingController extends Controller
             switch ($button_value) {
                 case 'both_meetings':
                     $this->slack_client->chatScheduleMessage([
-                        'channel' => self::$notice_channel,
+                        'channel' => config('const.slack_id.general'),
                         'post_at' => $first_meeting_day,
                         'blocks' => json_encode($this->createMeetingMessageBlocks($first_meeting_day_name))
                     ]);
                     $this->slack_client->chatScheduleMessage([
-                        'channel' => self::$notice_channel,
+                        'channel' => config('const.slack_id.general'),
                         'post_at' => $second_meeting_day,
                         'blocks' => json_encode($this->createMeetingMessageBlocks($second_meeting_day_name))
                     ]);    
                     return true;
                 case 'first_meeting':
                     $this->slack_client->chatScheduleMessage([
-                        'channel' => self::$notice_channel,
+                        'channel' => config('const.slack_id.general'),
                         'post_at' => $first_meeting_day,
                         'blocks' => json_encode($this->createMeetingMessageBlocks($first_meeting_day_name))
                     ]);
                     return true;
                 case 'second_meeting':
                     $this->slack_client->chatScheduleMessage([
-                        'channel' => self::$notice_channel,
+                        'channel' => config('const.slack_id.general'),
                         'post_at' => $second_meeting_day,
                         'blocks' => json_encode($this->createMeetingMessageBlocks($second_meeting_day_name))
                     ]);
@@ -236,7 +226,7 @@ class MeetingController extends Controller
                     return false;
                 default:
                     $this->slack_client->chatPostMessage([
-                        'channel' => self::$administrator,
+                        'channel' => config('const.slack_id.general'),
                         'text' => 'エラー発生によりミーティングのスケジュールを行うことができませんでした',
                     ]);
                     return false;
@@ -322,7 +312,7 @@ class MeetingController extends Controller
 
             if (!$scheduling_result) {
                 $this->slack_client->chatPostMessage([
-                    'channel' => self::$administrator, 
+                    'channel' => config('const.slack_id.administrator'),
                     'text' => '次回ミーティングはパスされました！'
                 ]);
                 exit;
@@ -336,12 +326,12 @@ class MeetingController extends Controller
 
             if (count($next_meeting_date_list) > 1) {
                 $this->slack_client->chatPostMessage([
-                    'channel' => self::$administrator,
+                    'channel' => config('const.slack_id.administrator'),
                     'text' => "次回ミーティングの予定を確定しました！\n {$next_meeting_date_list[0]} と {$next_meeting_date_list[1]} に通知します"
                 ]);
             } else {
                 $this->slack_client->chatPostMessage([
-                    'channel' => self::$administrator,
+                    'channel' => config('const.slack_id.administrator'),
                     'text' => "次回ミーティングの予定を確定しました！\n {$next_meeting_date_list[0]} に通知します"
                 ]);
             }
@@ -349,7 +339,7 @@ class MeetingController extends Controller
         } catch (\Throwable $th) {
             Log::info($th);
             $this->slack_client->chatPostMessage([
-                'channel' => self::$administrator,
+                'channel' => config('const.slack_id.administrator'),
                 'text' => 'ミーティングの設定は正常に行われませんでした。'
             ]);
         }
