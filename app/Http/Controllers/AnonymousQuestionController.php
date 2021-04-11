@@ -48,12 +48,10 @@ class AnonymousQuestionController extends Controller
     {
         try {
             $user_inputs = $payload['view']['state']['values'];
-            $selected_mentor = $user_inputs['mentors-block']['mentor']['selected_option']['value'];
+            $mentor_number = intval($user_inputs['mentors-block']['mentor']['selected_option']['value']);
             $question_sentence = $user_inputs['question-block']['question']['value'];    
-                        
-            if (!$selected_mentor || !$question_sentence) exit;
-
-            $mention = $selected_mentor == 'mentor6' ? '< 全体へ >' : config("const.slack_id.$selected_mentor");
+            
+            $mention = $mentor_number == 6 ? ' 全体へ' : config("const.slack_id.mentors")[$mentor_number];
             $this->slack_client->chatPostMessage([
                 'channel' => config('const.slack_id.question_channel'),
                 'username' => '匿名の相談です',
@@ -63,7 +61,7 @@ class AnonymousQuestionController extends Controller
                         "type" => "section",
                         "text" => [
                             "type" => "mrkdwn",
-                            "text" => "$mention",
+                            "text" => "<@$mention>",
                         ]
                     ],
                     [
@@ -221,7 +219,7 @@ class AnonymousQuestionController extends Controller
                                             "text" => "今川メンター：Ruby, Scala, PHP, AWSなど",
                                             "emoji" => true
                                         ],
-                                        "value" => "mentor0"
+                                        "value" => "0"
                                     ],
                                     [
                                         "text" => [
@@ -229,7 +227,7 @@ class AnonymousQuestionController extends Controller
                                             "text" => "菊池メンター：Kotlin, flutter など",
                                             "emoji" => true
                                         ],
-                                        "value" => "mentor1"
+                                        "value" => "1"
                                     ],
                                     [
                                         "text" => [
@@ -237,7 +235,7 @@ class AnonymousQuestionController extends Controller
                                             "text" => "工藤メンター：PHP, Go, ハッカソンの審査/勝ち方 など",
                                             "emoji" => true
                                         ],
-                                        "value" => "mentor2"
+                                        "value" => "2"
                                     ],
                                     [
                                         "text" => [
@@ -245,7 +243,7 @@ class AnonymousQuestionController extends Controller
                                             "text" => "近藤メンター：JavaScript, TypeScript, フロントエンド全般 など",
                                             "emoji" => true
                                         ],
-                                        "value" => "mentor3"
+                                        "value" => "3"
                                     ],
                                     [
                                         "text" => [
@@ -253,7 +251,7 @@ class AnonymousQuestionController extends Controller
                                             "text" => "noppe(平野)メンター：Swift, 個人開発 など",
                                             "emoji" => true
                                         ],
-                                        "value" => "mentor4"
+                                        "value" => "4"
                                     ],
                                     [
                                         "text" => [
@@ -261,7 +259,7 @@ class AnonymousQuestionController extends Controller
                                             "text" => "山際メンター：Python, Go, 機械学習, 就活相談 など",
                                             "emoji" => true
                                         ],
-                                        "value" => "mentor5"
+                                        "value" => "5"
                                     ],
                                     [
                                         "text" => [
@@ -269,7 +267,7 @@ class AnonymousQuestionController extends Controller
                                             "text" => "その他",
                                             "emoji" => true
                                         ],
-                                        "value" => "mentor6"
+                                        "value" => "6"
                                     ]
                                 ]
                             ]
