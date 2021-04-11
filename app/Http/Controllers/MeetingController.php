@@ -298,8 +298,9 @@ class MeetingController extends Controller
     */
     public function notifyMeetingSettingsCompletion (Request $request) 
     {
+        response('', 200)->send();
+
         try {
-            response('', 200)->send();
             $next_meeting = $this->getActionsResponse($request);
 
             $today = CarbonImmutable::today('Asia/Tokyo');
