@@ -15,4 +15,4 @@ Route::get('/', function () {
     return view('welcome');
 });
 
-Route::any('/notify_meeting_settings_completion', 'MeetingController@notifyMeetingSettingsCompletion');
+Route::post('/interactive_endpoint','InteractiveEndpointController');

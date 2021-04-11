@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use JoliCode\Slack\ClientFactory;
 use JoliCode\Slack\Exception\SlackErrorResponse;
@@ -54,6 +53,7 @@ class MeetingController extends Controller
             ],
             [
                 "type" => "actions",
+                "block_id" => "confirm_meeting",
                 "elements" => [
                     [
                         "type" => "button",
@@ -63,7 +63,7 @@ class MeetingController extends Controller
                             "emoji" => true
                         ],
                         "value" => "both_meetings",
-                        "action_id" => "actionId-0"
+                        "action_id" => "meeting_option1"
                     ],
                     [
                         "type" => "button",
@@ -73,7 +73,7 @@ class MeetingController extends Controller
                             "emoji" => true
                         ],
                         "value" => "first_meeting",
-                        "action_id" => "actionId-1"
+                        "action_id" => "meeting_option2"
                     ],
                     [
                         "type" => "button",
@@ -83,7 +83,7 @@ class MeetingController extends Controller
                             "emoji" => true
                         ],
                         "value" => "second_meeting",
-                        "action_id" => "actionId-2"
+                        "action_id" => "meeting_option3"
                     ],
                     [
                         "type" => "button",
@@ -93,30 +93,11 @@ class MeetingController extends Controller
                             "emoji" => true
                         ],
                         "value" => "not_both_meetings",
-                        "action_id" => "actionId-3"
+                        "action_id" => "meeting_option4"
                     ]
                 ]
             ]
         ];
-    }
-
-   /**
-    *  ミーティングボタンが押されたときのパラメータを受け取り処理する
-    *
-    *  slackにてボタンが押された際のパラメータを取得し、actions部分だけ取得する
-    *
-    * @param Request $request
-    * @return string $payload['actions'] 押されたボタンの情報を保有しているactionsのみ返す
-    */
-    public function getActionsResponse (Request $request) 
-    {
-        try {
-            $payload = json_decode($request->input('payload'), true);
-            return $payload['actions'];
-
-        } catch (\Throwable $th) {
-            Log::info($th);
-        }
     }
 
    /**
@@ -293,15 +274,15 @@ class MeetingController extends Controller
     *  deleteOverlappedMeetingでメッセージの重複を防止した後、scheduleMeetingsでミーティング開催通知を予約する
     *  以上の処理が終わった後、ミーティング設定が完了したことを通知する
     *
-    * @param Request $request
+    * @param $payload json_decodeされたペイロード。InteractiveEndpointControllerから受け取る。
     * @var $scheduling_result scheduleMeetingsの結果(true|false)を受け取る変数。falseの場合は別途メッセージを送信
     */
-    public function notifyMeetingSettingsCompletion (Request $request) 
+    public function notifyMeetingSettingsCompletion ($payload) 
     {
         response('', 200)->send();
 
         try {
-            $next_meeting = $this->getActionsResponse($request);
+            $next_meeting = $payload['actions'];
 
             $today = CarbonImmutable::today('Asia/Tokyo');
             // todayを基準に今週の月曜日・木曜日を取得し7日分加算

@@ -20,6 +20,6 @@ class VerifyCsrfToken extends Middleware
      * @see MeetingController/notifyMeetingSettingsCompletion
      */
     protected $except = [
-        '/notify_meeting_settings_completion',
+        'interactive_endpoint',
     ];
 }
