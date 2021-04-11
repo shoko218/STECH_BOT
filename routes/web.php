@@ -15,9 +15,8 @@ Route::get('/', function () {
     return view('welcome');
 });
 
-// ここをInteractiveEndpointに変更
-Route::any('/send_question_to_channel', 'AnonymousQuestionController@sendQuestionToChannel');
+Route::any('/interactive_endpoint', 'InteractiveEndpointController');
 
 Route::prefix('/slash')->group(function () {
-    Route::post('/ask_question', 'AnonymousQuestionController@openQuestionForm');
+    Route::post('/ask_questions', 'AnonymousQuestionController@openQuestionForm');
 });

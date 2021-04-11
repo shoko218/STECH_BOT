@@ -25,9 +25,9 @@ class AnonymousQuestionController extends Controller
     */
     public function openQuestionForm (Request $request) 
     {
+        response('', 200)->send();
+        
         try {
-            response('', 200)->send();
-
             $query_params = [
                 'view' => json_encode($this->createQuestionFormView()),
                 'trigger_id' => $request->input('trigger_id')
@@ -41,32 +41,15 @@ class AnonymousQuestionController extends Controller
     }
 
    /**
-    * モーダルからの入力を受け取り、ユーザーが選択・入力した値を取り出す
-    *
-    * @param Request $request
-    */
-    public function receiveFormResponse (Request $request)
-    {
-        try {
-            $payload = json_decode($request->input('payload'), true);
-
-            return $payload['view']['state']['values'];
-
-        } catch (\Throwable $th) {
-            Log::info($th);
-        }
-    }
-
-   /**
     * 受け付けた匿名質問をメッセージとして公開チャンネルに流す
     * 
     * @param Request $request
     * @var string $mention メンション先を定義
     */
-    public function sendQuestionToChannel (Request $request)
+    public function sendQuestionToChannel ($payload)
     {
         try {
-            $user_inputs = $this->receiveFormResponse($request);
+            $user_inputs = $payload['view']['state']['values'];
             $selected_mentor = $user_inputs['mentors-block']['mentor']['selected_option']['value'];
             $question_sentence = $user_inputs['question-block']['question']['value'];    
                         
@@ -203,7 +186,7 @@ class AnonymousQuestionController extends Controller
     {
         return [
                 "type"=> "modal",
-                "callback_id" => "anonymous-questions",
+                "callback_id" => "ask_questions",
                 "title"=> [
                     "type"=> "plain_text",
                     "text"=> "匿名質問フォーム",
@@ -315,7 +298,7 @@ class AnonymousQuestionController extends Controller
                                     [
                                         "text" => [
                                             "type" => "plain_text",
-                                            "text" => "その他 ",
+                                            "text" => "その他",
                                             "emoji" => true
                                         ],
                                         "value" => "mentor6"
