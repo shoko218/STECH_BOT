@@ -10,9 +10,7 @@ use JoliCode\Slack\Exception\SlackErrorResponse;
 class AnonymousQuestionController extends Controller
 {
     private $slack_client;
-    
-    public static $channel = '#匿名質問チャンネル';
-    
+        
     public function __construct()
     {
         $this->slack_client = ClientFactory::create(config('services.slack.token'));
@@ -55,9 +53,9 @@ class AnonymousQuestionController extends Controller
                         
             if (!$selected_mentor || !$question_sentence) exit;
 
-            $mention = $this->getMentionId($selected_mentor);
+            $mention = $selected_mentor == 'mentor6' ? '< 全体へ >' : config("const.slack_id.$selected_mentor");
             $this->slack_client->chatPostMessage([
-                'channel' => self::$channel,
+                'channel' => config('const.slack_id.question_channel'),
                 'username' => '匿名の相談です',
                 'icon_url' => 'https://2.bp.blogspot.com/-VVtgu8RyEJo/VZ-QWqgI_wI/AAAAAAAAvKY/N-xnZvqeGYY/s800/girl_question.png',
                 'blocks' => json_encode([
@@ -91,43 +89,13 @@ class AnonymousQuestionController extends Controller
     }
 
    /**
-    * パラメーターから該当するメンション先を返す
-    *
-    * 菊池メンター、工藤メンター、近藤メンター、平野メンター、山際メンター、その他」の順
-    * 
-    * @param string $selected_mentor
-    * @return string
-    */
-    public function getMentionId ($selected_mentor)
-    {
-        switch ($selected_mentor) {
-            case 'mentor0':
-                return '<@UU6S9J5EZ>';
-            case 'mentor1':
-                return '<@UTY2QH0RG>';
-            case 'mentor2':
-                return '<@UU6RPHQGG>';
-            case 'mentor3':
-                return '<@U01CE7ZL1T3>';
-            case 'mentor4':
-                return '<@UU6RPJUJU>';
-            case 'mentor5':
-                return '<@UTZC4SKPV>';
-            case 'mentor6':
-                return '< 全体へ >';
-            default:
-                Log::info(print_r($selected_mentor));
-        }
-    }
-
-   /**
     * 匿名質問フォームを紹介するメッセージを送る
     */
     public function IntroduceQuestionForm ()
     {
         try {
             $this->slack_client->chatPostMessage([
-                'channel' => self::$channel,
+                'channel' => config('const.slack_id.question_channel'),
                 'blocks' => json_encode($this->createQuestionFormIntroductionBlocks())
             ]);
 
