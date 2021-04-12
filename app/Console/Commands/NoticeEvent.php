@@ -42,10 +42,6 @@ class NoticeEvent extends Command
      */
     public function handle()
     {
-        try {
-            app()->make('App\Http\Controllers\EventController')->noticeEvent();
-        } catch (\Throwable $th) {
-            Log::info($th);
-        }
+        app()->make('App\Http\Controllers\EventController')->noticeEvent();
     }
 }

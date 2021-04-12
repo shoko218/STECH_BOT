@@ -29,24 +29,29 @@ class EventController extends Controller
      */
     public function showCreateEventModal(Request $request)
     {
-        $params = [
-            'view' => json_encode($this->getModalConstitution()),
-            'trigger_id' => $request->trigger_id
-        ];
-
-        $client = new Client();
-        $response = $client->request(
-            'POST',
-            'https://slack.com/api/views.open',
-            [
-                'headers' => [
-                    'Content-type' => 'application/json',
-                    'Authorization'  =>  'Bearer ' . config('services.slack.token')
-                ],
-                'json' => $params
-            ]
-        );
         response('', 200)->send();
+
+        try {
+            $params = [
+                'view' => json_encode($this->getModalConstitution()),
+                'trigger_id' => $request->trigger_id
+            ];
+
+            $client = new Client();
+            $response = $client->request(
+                'POST',
+                'https://slack.com/api/views.open',
+                [
+                    'headers' => [
+                        'Content-type' => 'application/json',
+                        'Authorization'  =>  'Bearer ' . config('services.slack.token')
+                    ],
+                    'json' => $params
+                ]
+            );
+        } catch (\Throwable $th) {
+            Log::info($th);
+        }
     }
 
     /**
@@ -132,33 +137,37 @@ class EventController extends Controller
      */
     public function noticeEvent()
     {
-        //知らせるべきイベントを取得
-        $notice_events = Event::whereNull('notice_ts')//まだ知らせていないイベント
-            ->where(function ($query) {//お知らせ日時がすぎているものを指定
-                $query->where(function ($q) {//前日以前に知らせるべきイベント
-                    $q->whereDate('notice_datetime', '<', date('Y-m-d'));
-                })->orWhere(function ($q) {//今日知らせるべきで、現在時刻以前に知らせるべきイベント
-                    $q->whereDate('notice_datetime', date('Y-m-d'))
-                    ->whereTime('notice_datetime', '<=', date('H:i:s'));
-                });
-            })
-            ->where(function ($query) {//イベントがまだ終わっていないものを選択
-                $query->where(function ($q) {//明日以降に開催されるイベント
-                    $q->whereDate('event_datetime', '>', date('Y-m-d'));
-                })->orWhere(function ($q) {//今日開催の、現在時刻より後に開催されるイベント
-                    $q->whereDate('event_datetime', date('Y-m-d'))
-                    ->whereTime('event_datetime', '>', date('H:i:s'));
-                });
-            })
-            ->get();
+        try {
+            //知らせるべきイベントを取得
+            $notice_events = Event::whereNull('notice_ts')//まだ知らせていないイベント
+                ->where(function ($query) {//お知らせ日時がすぎているものを指定
+                    $query->where(function ($q) {//前日以前に知らせるべきイベント
+                        $q->whereDate('notice_datetime', '<', date('Y-m-d'));
+                    })->orWhere(function ($q) {//今日知らせるべきで、現在時刻以前に知らせるべきイベント
+                        $q->whereDate('notice_datetime', date('Y-m-d'))
+                        ->whereTime('notice_datetime', '<=', date('H:i:s'));
+                    });
+                })
+                ->where(function ($query) {//イベントがまだ終わっていないものを選択
+                    $query->where(function ($q) {//明日以降に開催されるイベント
+                        $q->whereDate('event_datetime', '>', date('Y-m-d'));
+                    })->orWhere(function ($q) {//今日開催の、現在時刻より後に開催されるイベント
+                        $q->whereDate('event_datetime', date('Y-m-d'))
+                        ->whereTime('event_datetime', '>', date('H:i:s'));
+                    });
+                })
+                ->get();
 
-        foreach ($notice_events as $event) {
-            $chat = $this->slack_client->chatPostMessage([
-                'channel' => 'C01NCNM4WQ6',
-                'blocks' => json_encode($this->getNoticeEventBlocks($event)),
-            ]);
-            $event->notice_ts = $chat->getTs();
-            $event->save();
+            foreach ($notice_events as $event) {
+                $chat = $this->slack_client->chatPostMessage([
+                    'channel' => 'C01NCNM4WQ6',
+                    'blocks' => json_encode($this->getNoticeEventBlocks($event)),
+                ]);
+                $event->notice_ts = $chat->getTs();
+                $event->save();
+            }
+        } catch (\Throwable $th) {
+            Log::info($th);
         }
     }
 
@@ -169,16 +178,20 @@ class EventController extends Controller
      */
     public function remindEvent()
     {
-        $today_held_events = Event::whereDate('event_datetime', '=', date('Y-m-d'))//今日開催のイベント
-            ->whereNull('remind_ts')//まだリマインドしていないもの
-            ->get();
-        foreach ($today_held_events as $event) {
-            $chat = $this->slack_client->chatPostMessage([
-                'channel' => 'C01NCNM4WQ6',
-                'blocks' => json_encode($this->getRemindEventBlocks($event)),
-            ]);
-            $event->remind_ts = $chat->getTs();
-            $event->save();
+        try {
+            $today_held_events = Event::whereDate('event_datetime', '=', date('Y-m-d'))//今日開催のイベント
+                ->whereNull('remind_ts')//まだリマインドしていないもの
+                ->get();
+            foreach ($today_held_events as $event) {
+                $chat = $this->slack_client->chatPostMessage([
+                    'channel' => 'C01NCNM4WQ6',
+                    'blocks' => json_encode($this->getRemindEventBlocks($event)),
+                ]);
+                $event->remind_ts = $chat->getTs();
+                $event->save();
+            }
+        } catch (\Throwable $th) {
+            Log::info($th);
         }
     }
 
@@ -189,18 +202,22 @@ class EventController extends Controller
      */
     public function shareEventUrl()
     {
-        $start_time = new DateTime();
-        $start_time->modify('+15 minutes');
-        $coming_soon_events = Event::whereDate('event_datetime', $start_time->format('Y-m-d'))
-            ->whereTime('event_datetime', $start_time
-            ->format('H:i:').'00')
-            ->get();//15分後に始まるイベントを取得
+        try {
+            $start_time = new DateTime();
+            $start_time->modify('+15 minutes');
+            $coming_soon_events = Event::whereDate('event_datetime', $start_time->format('Y-m-d'))
+                ->whereTime('event_datetime', $start_time
+                ->format('H:i:').'00')
+                ->get();//15分後に始まるイベントを取得
 
-        foreach ($coming_soon_events as $event) {
-            $this->slack_client->chatPostMessage([
-                'channel' => 'C01NCNM4WQ6',
-                'text' => "<!channel> 【イベントURLのお知らせ】\nこの後{$event->event_datetime->format('H時i分')}から開催する *{$event->name}* のURLはこちらです!\n{$event->url}",
-            ]);
+            foreach ($coming_soon_events as $event) {
+                $this->slack_client->chatPostMessage([
+                    'channel' => 'C01NCNM4WQ6',
+                    'text' => "<!channel> 【イベントURLのお知らせ】\nこの後{$event->event_datetime->format('H時i分')}から開催する *{$event->name}* のURLはこちらです!\n{$event->url}",
+                ]);
+            }
+        } catch (\Throwable $th) {
+            Log::info($th);
         }
     }
 

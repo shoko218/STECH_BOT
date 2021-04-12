@@ -41,10 +41,6 @@ class ShareEventUrl extends Command
      */
     public function handle()
     {
-        try {
-            app()->make('App\Http\Controllers\EventController')->shareEventUrl();
-        } catch (\Throwable $th) {
-            Log::info($th);
-        }
+        app()->make('App\Http\Controllers\EventController')->shareEventUrl();
     }
 }

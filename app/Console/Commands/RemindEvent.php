@@ -38,10 +38,6 @@ class RemindEvent extends Command
      */
     public function handle()
     {
-        try {
-            app()->make('App\Http\Controllers\EventController')->remindEvent();
-        } catch (\Throwable $th) {
-            Log::info($th);
-        }
+        app()->make('App\Http\Controllers\EventController')->remindEvent();
     }
 }
