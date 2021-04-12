@@ -14,7 +14,7 @@ class InteractiveEndpointController extends Controller
             if ($payload['type'] === "view_submission") {//モーダルのフォームが送信された場合
                 switch ($payload['view']['callback_id']) {
                     case 'apply_counseling'://相談会申し込みフォーム
-                        app()->make('App\Http\Controllers\CounselingController')->notifyToMenter($payload);
+                        app()->make('App\Http\Controllers\CounselingController')->notifyToMentor($payload);
                         break;
                 }
             }

@@ -18,5 +18,5 @@ Route::get('/', function () {
 Route::post('/interactive_endpoint', 'InteractiveEndpointController');
 
 Route::prefix('/slash')->group(function () {
-    Route::post('/show_application_counseling_modal', 'SlashCommand\ShowApplyCounselingModalController');
+    Route::post('/show_application_counseling_modal', 'CounselingController@showApplicationModal');
 });

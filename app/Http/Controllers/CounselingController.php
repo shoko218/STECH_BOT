@@ -23,11 +23,11 @@ class CounselingController extends Controller
     * @param Request $request
     * @return void
     */
-    public function showApplicationModal($trigger_id)
+    public function showApplicationModal(Request $request)
     {
         $params = [
             'view' => json_encode($this->getModalConstitution()),
-            'trigger_id' => $trigger_id
+            'trigger_id' => $request->trigger_id
         ];
 
         $this->slack_client->viewsOpen($params);
@@ -37,14 +37,14 @@ class CounselingController extends Controller
     /**
     * メンターさんに申し込み内容を送信する
     *
-    * @param Request $request
+    * @param array $payload
     * @return void
     */
-    public function notifyToMenter($payload)
+    public function notifyToMentor($payload)
     {
         //変数に変換
-        $menter_slack_id = $payload['view']['state']['values']['menter_slack_id']['menter_slack_id']['selected_option']['value'];
-        $menter_name = $payload['view']['state']['values']['menter_slack_id']['menter_slack_id']['selected_option']['text']['text'];
+        $mentor_slack_id = $payload['view']['state']['values']['mentor_slack_id']['mentor_slack_id']['selected_option']['value'];
+        $mentor_name = $payload['view']['state']['values']['mentor_slack_id']['mentor_slack_id']['selected_option']['text']['text'];
         $consultation_content = $payload['view']['state']['values']['consultation_content']['consultation_content']['value'];
 
         $first_preferred_date_time = $payload['view']['state']['values']['first_preferred_date_time']['first_preferred_date_time']['value'];
@@ -55,13 +55,13 @@ class CounselingController extends Controller
         $user_name = $this->slack_client->usersProfileGet(['user' => $user_id])->getProfile()->getDisplayName();
 
         $this->slack_client->chatPostMessage([
-            'channel' => config('const.slack_id.menter_channel'),
-            'text' => "<@".$menter_slack_id.">\n{$menter_name}さんに相談会の申し込みがありました！\n\n```名前:{$user_name}さん【<@".$user_id.">】\n相談内容:{$consultation_content}\n第一希望:{$first_preferred_date_time}\n第二希望:{$second_preferred_date_time}\n第三希望:{$third_preferred_date_time}\n```",
+            'channel' => config('const.slack_id.mentor_channel'),
+            'text' => "<@".$mentor_slack_id.">\n{$mentor_name}さんに相談会の申し込みがありました！\n\n```名前:{$user_name}さん【<@".$user_id.">】\n相談内容:{$consultation_content}\n第一希望:{$first_preferred_date_time}\n第二希望:{$second_preferred_date_time}\n第三希望:{$third_preferred_date_time}\n```",
         ]);
 
         $this->slack_client->chatPostMessage([
             'channel' => $user_id,
-            'text' => "相談会を申し込みました！\nメンターさんからの返信をお待ちください。\n\n```メンター:{$menter_name}さん\n相談内容:{$consultation_content}\n第一希望:{$first_preferred_date_time}\n第二希望:{$second_preferred_date_time}\n第三希望:{$third_preferred_date_time}\n```",
+            'text' => "相談会を申し込みました！\nメンターさんからの返信をお待ちください。\n\n```メンター:{$mentor_name}さん\n相談内容:{$consultation_content}\n第一希望:{$first_preferred_date_time}\n第二希望:{$second_preferred_date_time}\n第三希望:{$third_preferred_date_time}\n```",
         ]);
 
         response('', 200)->send();
@@ -95,7 +95,7 @@ class CounselingController extends Controller
             "blocks" => [
                 [
                     "type" => "input",
-                    "block_id" => "menter_slack_id",
+                    "block_id" => "mentor_slack_id",
                     "label" => [
                         "type" => "plain_text",
                         "text" => "相談したいメンター",
@@ -115,7 +115,7 @@ class CounselingController extends Controller
                                     "text" => "メンター1",
                                     "emoji" => true
                                 ],
-                                "value" => config('const.slack_id.menters')[0]
+                                "value" => config('const.slack_id.mentors')[0]
                             ],
                             [
                                 "text" => [
@@ -123,10 +123,10 @@ class CounselingController extends Controller
                                     "text" => "メンター2",
                                     "emoji" => true
                                 ],
-                                "value" => config('const.slack_id.menters')[1]
+                                "value" => config('const.slack_id.mentors')[1]
                             ]
                         ],
-                        "action_id" => "menter_slack_id"
+                        "action_id" => "mentor_slack_id"
                     ]
                 ],
                 [
