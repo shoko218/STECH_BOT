@@ -19,14 +19,14 @@ class EventController extends Controller
         $this->slack_client = ClientFactory::create(config('services.slack.token'));
     }
 
-   /**
-    * イベント作成フォームを表示する
-    *
-    * @param Request $request
-    * @return array
-    * @todo slack-php-apiを利用してこの処理を行いたいのですが、slack-php-apiからこの処理を行うとモーダルのjsonが長すぎてエラーになってしまいます。
-    * slack-php-apiが改善されるか、モーダルでtimepickerが利用できるようになった場合、slack-php-apiで送信できないか試してみてください。
-    */
+    /**
+     * イベント作成フォームを表示する
+     *
+     * @param Request $request
+     * @return array
+     * @todo slack-php-apiを利用してこの処理を行いたいのですが、slack-php-apiからこの処理を行うとモーダルのjsonが長すぎてエラーになってしまいます。
+     * slack-php-apiが改善されるか、モーダルでtimepickerが利用できるようになった場合、slack-php-apiで送信できないか試してみてください。
+     */
     public function showCreateEventModal($trigger_id)
     {
         $params = [
@@ -35,7 +35,9 @@ class EventController extends Controller
         ];
 
         $client = new Client();
-        $response = $client->request('POST','https://slack.com/api/views.open',
+        $response = $client->request(
+            'POST',
+            'https://slack.com/api/views.open',
             [
                 'headers' => [
                     'Content-type' => 'application/json',
@@ -44,18 +46,18 @@ class EventController extends Controller
                 'json' => $params
             ]
         );
-        response('',200)->send();
+        response('', 200)->send();
     }
 
-   /**
-    * イベントをDBに登録する
-    *
-    * @param array $payload
-    * @return void
-    * @todo スマホから年を入れると和暦表示になるのですが、なぜか和暦の値がそのまま渡ってくる(2021年の場合、令和3年なので年月日が'0003-m-d'で渡ってきます)ので、
-    * 渡ってきた年に+2018した年が今年から100年以内だった場合は和暦で渡ってきているとみなし、+2018して処理を進めます。
-    * この仕様が改善された場合は以下3行の処理は削除してください。また、年号が変わった場合は新しい年号が始まった年-1で処理を書き換えてください。
-    */
+    /**
+     * イベントをDBに登録する
+     *
+     * @param array $payload
+     * @return void
+     * @todo スマホから年を入れると和暦表示になるのですが、なぜか和暦の値がそのまま渡ってくる(2021年の場合、令和3年なので年月日が'0003-m-d'で渡ってきます)ので、
+     * 渡ってきた年に+2018した年が今年から100年以内だった場合は和暦で渡ってきているとみなし、+2018して処理を進めます。
+     * この仕様が改善された場合は以下3行の処理は削除してください。また、年号が変わった場合は新しい年号が始まった年-1で処理を書き換えてください。
+     */
     public function createEvent($payload)
     {
         DB::beginTransaction();
@@ -66,14 +68,14 @@ class EventController extends Controller
 
             //イベント日時の処理
             $event_datetime = new DateTime($payload['view']['state']['values']['event_date']['event_date']['selected_date']);//年月日だけでDateTime型作成
-            if((int)$event_datetime->format('Y')+2018 < (int)date('Y')+100){//和暦で値が渡って来ていたら西暦に変換
+            if ((int)$event_datetime->format('Y')+2018 < (int)date('Y')+100) {//和暦で値が渡って来ていたら西暦に変換
                 $event_datetime->modify("+ 2018 year");
             }
             $event_datetime->modify("+".$payload['view']['state']['values']['event_time']['event_hour']['selected_option']['value']." hour")->modify("+".$payload['view']['state']['values']['event_time']['event_minute']['selected_option']['value']." minute");//時、分を各フォームから取得し、上で作成したDateTime型に情報を追加
 
             //お知らせ日時の処理
             $notice_datetime = new DateTime($payload['view']['state']['values']['notice_date']['notice_date']['selected_date']);//年月日だけでDateTime型作成
-            if((int)$notice_datetime->format('Y')+2018 < (int)date('Y')+100){//和暦で値が渡って来ていたら西暦に変換
+            if ((int)$notice_datetime->format('Y')+2018 < (int)date('Y')+100) {//和暦で値が渡って来ていたら西暦に変換
                 $notice_datetime->modify("+ 2018 year");
             }
             $notice_datetime->modify("+".$payload['view']['state']['values']['notice_time']['notice_hour']['selected_option']['value']." hour")->modify("+".$payload['view']['state']['values']['notice_time']['notice_minute']['selected_option']['value']." minute");//時、分を各フォームから取得し、上で作成したDateTime型に情報を追加
@@ -81,22 +83,22 @@ class EventController extends Controller
             //バリデーション処理
             $errors = [];
             $now = new DateTime();
-            if($notice_datetime <= $now){//お知らせ日時が現在時刻以前の場合
+            if ($notice_datetime <= $now) {//お知らせ日時が現在時刻以前の場合
                 $errors["errors"]["notice_date"] = "現在時刻以降の日時を入力してください。";
             }
-            if($event_datetime <= $now){//イベント日時が現在時刻以前の場合
+            if ($event_datetime <= $now) {//イベント日時が現在時刻以前の場合
                 $errors["errors"]["event_date"] =  "現在時刻以降の日時を入力してください。";
             }
             if ($event_datetime <= $notice_datetime) {//イベント日時がお知らせ日時以前の場合
                 $errors["errors"]["notice_date"] = "お知らせする日時はイベントの日時より前に設定してください。";
             }
-            if(!filter_var($event_url, FILTER_VALIDATE_URL)){//URLの有効性を確認(ASCIIオンリーのURLのみの対応となるので、URLに日本語が含まれるものは弾かれる)
+            if (!filter_var($event_url, FILTER_VALIDATE_URL)) {//URLの有効性を確認(ASCIIオンリーのURLのみの対応となるので、URLに日本語が含まれるものは弾かれる)
                 $errors["errors"]["url"] = "有効なURLを入力してください。";
             }
 
-            if(empty($errors["errors"])){//バリデーションエラーがなければ
-                response('',200)->send();//3秒以内にレスポンスを返さないとタイムアウト扱いになるので、バリデーションが済んだらすぐにレスポンスを返す
-            }else{//バリデーションエラーがあれば
+            if (empty($errors["errors"])) {//バリデーションエラーがなければ
+                response('', 200)->send();//3秒以内にレスポンスを返さないとタイムアウト扱いになるので、バリデーションが済んだらすぐにレスポンスを返す
+            } else {//バリデーションエラーがあれば
                 $errors["response_action"] = "errors";
                 response()->json($errors)->send();//エラーの箇所とともにエラーレスポンスを返す
                 return;//処理を終了
@@ -119,20 +121,20 @@ class EventController extends Controller
         } catch (\Throwable $th) {
             DB::rollBack();
             Log::info($th);
-            response('エラーが発生し、イベントを登録できませんでした。もう一度お試しください。',200)->send();
+            response('エラーが発生し、イベントを登録できませんでした。もう一度お試しください。', 200)->send();
         }
     }
 
-   /**
-    * 開催予定のイベントを知らせる
-    *
-    * @return void
-    */
+    /**
+     * 開催予定のイベントを知らせる
+     *
+     * @return void
+     */
     public function noticeEvent()
     {
         //知らせるべきイベントを取得
         $notice_events = Event::whereNull('notice_ts')//まだ知らせていないイベント
-            ->where(function($query){//お知らせ日時がすぎているものを指定
+            ->where(function ($query) {//お知らせ日時がすぎているものを指定
                 $query->where(function ($q) {//前日以前に知らせるべきイベント
                     $q->whereDate('notice_datetime', '<', date('Y-m-d'));
                 })->orWhere(function ($q) {//今日知らせるべきで、現在時刻以前に知らせるべきイベント
@@ -140,7 +142,7 @@ class EventController extends Controller
                     ->whereTime('notice_datetime', '<=', date('H:i:s'));
                 });
             })
-            ->where(function($query){//イベントがまだ終わっていないものを選択
+            ->where(function ($query) {//イベントがまだ終わっていないものを選択
                 $query->where(function ($q) {//明日以降に開催されるイベント
                     $q->whereDate('event_datetime', '>', date('Y-m-d'));
                 })->orWhere(function ($q) {//今日開催の、現在時刻より後に開催されるイベント
@@ -160,14 +162,14 @@ class EventController extends Controller
         }
     }
 
-   /**
-    * 午前10時に今日開催するイベントをリマインドする
-    *
-    * @return void
-    */
+    /**
+     * 午前10時に今日開催するイベントをリマインドする
+     *
+     * @return void
+     */
     public function remindEvent()
     {
-        $today_held_events = Event::whereDate('event_datetime','=', date('Y-m-d'))//今日開催のイベント
+        $today_held_events = Event::whereDate('event_datetime', '=', date('Y-m-d'))//今日開催のイベント
             ->whereNull('remind_ts')//まだリマインドしていないもの
             ->get();
         foreach ($today_held_events as $event) {
@@ -180,21 +182,21 @@ class EventController extends Controller
         }
     }
 
-   /**
-    * 15分後に始まるイベントのURLを共有する
-    *
-    * @return void
-    */
+    /**
+     * 15分後に始まるイベントのURLを共有する
+     *
+     * @return void
+     */
     public function shareEventUrl()
     {
         $start_time = new DateTime();
         $start_time->modify('+15 minutes');
-        $coming_soon_events = Event::whereDate('event_datetime',$start_time->format('Y-m-d'))
-            ->whereTime('event_datetime',$start_time
+        $coming_soon_events = Event::whereDate('event_datetime', $start_time->format('Y-m-d'))
+            ->whereTime('event_datetime', $start_time
             ->format('H:i:').'00')
             ->get();//15分後に始まるイベントを取得
 
-        foreach($coming_soon_events as $event){
+        foreach ($coming_soon_events as $event) {
             $this->slack_client->chatPostMessage([
                 'channel' => 'C01NCNM4WQ6',
                 'text' => "<!channel> 【イベントURLのお知らせ】\nこの後{$event->event_datetime->format('H時i分')}から開催する *{$event->name}* のURLはこちらです!\n{$event->url}",
@@ -202,13 +204,13 @@ class EventController extends Controller
         }
     }
 
-   /**
-    * モーダルの構成を配列で返す(送信する際はjsonエンコードして送信)
-    *
-    * @return array
-    * @todo 現在、timepickerがベータ版にしかないのでactionに日時のセレクターを埋め込み、無理矢理日時が横並びになるようにしています。
-    * timepickerが正式にリリースされたら速やかにblock kitの構成を変更し、それにしたがってInteractiveEndpointControllerでの処理も書き換えてください。
-    */
+    /**
+     * モーダルの構成を配列で返す(送信する際はjsonエンコードして送信)
+     *
+     * @return array
+     * @todo 現在、timepickerがベータ版にしかないのでactionに日時のセレクターを埋め込み、無理矢理日時が横並びになるようにしています。
+     * timepickerが正式にリリースされたら速やかにblock kitの構成を変更し、それにしたがってInteractiveEndpointControllerでの処理も書き換えてください。
+     */
     public function getModalConstitution()
     {
         return [
@@ -782,19 +784,19 @@ class EventController extends Controller
         ];
     }
 
-   /**
-    * お知らせ登録の内容を配列で返す(送信する際はjsonエンコードして送信)
-    *
-    * @param object $event
-    * @return array
-    */
+    /**
+     * お知らせ登録の内容を配列で返す(送信する際はjsonエンコードして送信)
+     *
+     * @param object $event
+     * @return array
+     */
     public function getNoticeEventBlocks($event)
     {
         $event_participants = "";
         foreach ($event->eventParticipants as $event_participant) {//参加者一覧を一つの文字列に
             $event_participants .= "<@".$event_participant->slack_user_id."> ";
         }
-        if($event_participants === ""){//参加者がいない場合
+        if ($event_participants === "") {//参加者がいない場合
             $event_participants = 'まだいません。';
         }
 
@@ -819,7 +821,8 @@ class EventController extends Controller
                         "value" => "$event->id",
                         "action_id" => "register_to_attend_event"
                     ]
-                ]
+                ],
+                "block_id" => "register_to_attend_event",
             ],
             [
                 "type" => "section",
@@ -831,19 +834,19 @@ class EventController extends Controller
         ];
     }
 
-   /**
-    * リマインド投稿の内容を配列で返す(送信する際はjsonエンコードして送信)
-    *
-    * @param object $event
-    * @return array
-    */
+    /**
+     * リマインド投稿の内容を配列で返す(送信する際はjsonエンコードして送信)
+     *
+     * @param object $event
+     * @return array
+     */
     public function getRemindEventBlocks($event)
     {
         $event_participants = "";
         foreach ($event->eventParticipants as $event_participant) {//参加者一覧を一つの文字列に
             $event_participants .= "<@".$event_participant->slack_user_id."> ";
         }
-        if($event_participants === ""){//参加者がいない場合
+        if ($event_participants === "") {//参加者がいない場合
             $event_participants = 'まだいません。';
         }
 
@@ -868,7 +871,8 @@ class EventController extends Controller
                         "value" => "$event->id",
                         "action_id" => "register_to_attend_event"
                     ]
-                ]
+                ],
+                "block_id" => "register_to_attend_event",
             ],
             [
                 "type" => "section",
