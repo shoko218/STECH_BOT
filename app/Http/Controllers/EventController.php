@@ -27,11 +27,11 @@ class EventController extends Controller
      * @todo slack-php-apiを利用してこの処理を行いたいのですが、slack-php-apiからこの処理を行うとモーダルのjsonが長すぎてエラーになってしまいます。
      * slack-php-apiが改善されるか、モーダルでtimepickerが利用できるようになった場合、slack-php-apiで送信できないか試してみてください。
      */
-    public function showCreateEventModal($trigger_id)
+    public function showCreateEventModal(Request $request)
     {
         $params = [
             'view' => json_encode($this->getModalConstitution()),
-            'trigger_id' => $trigger_id
+            'trigger_id' => $request->trigger_id
         ];
 
         $client = new Client();
