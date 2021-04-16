@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use DateTime;
 use GuzzleHttp\Client;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -65,6 +64,44 @@ class CounselingController extends Controller
         ]);
 
         response('', 200)->send();
+    }
+
+
+    /**
+     * 相談会申し込みフォームを紹介するメッセージを送信する
+     */
+    public function introduceQuestionForm()
+    {
+        $this->slack_client->chatPostMessage([
+            'channel' => config('const.slack_id.general'),
+            'blocks' => json_encode($this->getIntroduceBlockConstitution())
+        ]);
+    }
+
+    /**
+     * 相談会申し込みフォームを紹介するメッセージの構成を配列で返す(送信する際はjsonエンコードして送信)
+     *
+     * @return array
+     */
+    public function getIntroduceBlockConstitution()
+    {
+        return [
+            [
+                "type" => "header",
+                "text" => [
+                    "type" => "plain_text",
+                    "text" => ":white_check_mark: 相談会を申し込める「/application-counseling」コマンドのご紹介",
+                    "emoji" => true
+                ]
+            ],
+            [
+                "type" => "section",
+                "text" => [
+                    "type" => "mrkdwn",
+                    "text" => "このワークスペース内でメンターさんに相談会の開催を申し込むことができます！\nチャット入力欄にて */application-counseling* と打ち込むと表示されるフォームに\n必要事項を入力して送信すると申し込みが完了します！\nキャリアや各技術の勉強方法など、メンターさんに直接相談したい方は相談会の開催をお願いしてみましょう！"
+                ]
+            ],
+        ];
     }
 
     /**
