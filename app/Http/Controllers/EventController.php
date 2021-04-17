@@ -160,7 +160,7 @@ class EventController extends Controller
 
             foreach ($notice_events as $event) {
                 $chat = $this->slack_client->chatPostMessage([
-                    'channel' => 'C01NCNM4WQ6',
+                    'channel' => config('const.slack_id.general'),
                     'blocks' => json_encode($this->getNoticeEventBlocks($event)),
                 ]);
                 $event->notice_ts = $chat->getTs();
@@ -184,7 +184,7 @@ class EventController extends Controller
                 ->get();
             foreach ($today_held_events as $event) {
                 $chat = $this->slack_client->chatPostMessage([
-                    'channel' => 'C01NCNM4WQ6',
+                    'channel' => config('const.slack_id.general'),
                     'blocks' => json_encode($this->getRemindEventBlocks($event)),
                 ]);
                 $event->remind_ts = $chat->getTs();
@@ -212,7 +212,7 @@ class EventController extends Controller
 
             foreach ($coming_soon_events as $event) {
                 $this->slack_client->chatPostMessage([
-                    'channel' => 'C01NCNM4WQ6',
+                    'channel' => config('const.slack_id.general'),
                     'text' => "<!channel> 【イベントURLのお知らせ】\nこの後{$event->event_datetime->format('H時i分')}から開催する *{$event->name}* のURLはこちらです!\n{$event->url}",
                 ]);
             }
@@ -232,7 +232,7 @@ class EventController extends Controller
         try {
             if ($event->notice_ts != null) {//既にお知らせしていればお知らせ投稿を更新
                 $this->slack_client->chatUpdate([
-                    'channel' => 'C01NCNM4WQ6',
+                    'channel' => config('const.slack_id.general'),
                     'ts' => $event->notice_ts,
                     'blocks' => json_encode($this->getNoticeEventBlocks($event)),
                 ]);
@@ -240,7 +240,7 @@ class EventController extends Controller
 
             if ($event->remind_ts != null) {//既にリマインドしていればリマインド投稿を更新
                 $this->slack_client->chatUpdate([
-                    'channel' => 'C01NCNM4WQ6',
+                    'channel' => config('const.slack_id.general'),
                     'ts' => $event->remind_ts,
                     'blocks' => json_encode($this->getRemindEventBlocks($event)),
                 ]);
