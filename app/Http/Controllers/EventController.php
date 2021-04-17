@@ -921,7 +921,7 @@ class EventController extends Controller
                 "type" => "section",
                 "text" => [
                     "type" => "mrkdwn",
-                    "text" => "<!channel>\n【リマインド】\nこの後{$event->event_datetime->format('H時i分')}から、 *{$event->name}* を開催します！\n\n{$event->description}\n\n参加を希望する方は下のボタンを押してください！"
+                    "text" => "<!channel>\n【リマインド】\nこの後{$event->event_datetime->format('H時i分')}から、 *{$event->name}* を開催します！\n\n{$event->description}\n\n参加を希望する方は「参加する！」ボタンを押してください！\n参加を取りやめたい方は「参加をやめる」ボタンを押してください。"
                 ]
             ],
             [
