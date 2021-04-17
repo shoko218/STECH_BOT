@@ -222,6 +222,36 @@ class EventController extends Controller
     }
 
     /**
+     * イベントに関する投稿の参加者情報を更新する
+     *
+     * @param Event $event
+     * @return void
+     */
+    public function updateEventPosts(Event $event)
+    {
+        try {
+            if ($event->notice_ts != null) {//既にお知らせしていればお知らせ投稿を更新
+                $this->slack_client->chatUpdate([
+                    'channel' => 'C01NCNM4WQ6',
+                    'ts' => $event->notice_ts,
+                    'blocks' => json_encode($this->getNoticeEventBlocks($event)),
+                ]);
+            }
+
+            if ($event->remind_ts != null) {//既にリマインドしていればリマインド投稿を更新
+                $this->slack_client->chatUpdate([
+                    'channel' => 'C01NCNM4WQ6',
+                    'ts' => $event->remind_ts,
+                    'blocks' => json_encode($this->getRemindEventBlocks($event)),
+                ]);
+            }
+        } catch (\Throwable $th) {
+            Log::info($th);
+        }
+    }
+
+
+    /**
      * モーダルの構成を配列で返す(送信する際はjsonエンコードして送信)
      *
      * @return array
@@ -804,17 +834,21 @@ class EventController extends Controller
     /**
      * お知らせ登録の内容を配列で返す(送信する際はjsonエンコードして送信)
      *
-     * @param object $event
+     * @param Event $event
      * @return array
      */
     public function getNoticeEventBlocks($event)
     {
-        $event_participants = "";
-        foreach ($event->eventParticipants as $event_participant) {//参加者一覧を一つの文字列に
-            $event_participants .= "<@".$event_participant->slack_user_id."> ";
-        }
-        if ($event_participants === "") {//参加者がいない場合
-            $event_participants = 'まだいません。';
+        try {
+            $event_participants = "";
+            foreach ($event->eventParticipants as $event_participant) {//参加者一覧を一つの文字列に
+                $event_participants .= "<@".$event_participant->slack_user_id."> ";
+            }
+            if ($event_participants === "") {//参加者がいない場合
+                $event_participants = 'まだいません。';
+            }
+        } catch (\Throwable $th) {
+            Log::info($th);
         }
 
         return [
@@ -822,7 +856,7 @@ class EventController extends Controller
                 "type" => "section",
                 "text" => [
                     "type" => "mrkdwn",
-                    "text" => "<!channel> \n【イベントのお知らせ】\n{$event->event_datetime->format('m月d日 H時i分~')}\n *{$event->name}* を開催します！\n\n{$event->description}\n\n参加を希望する方は下のボタンを押してください！"
+                    "text" => "<!channel> \n【イベントのお知らせ】\n{$event->event_datetime->format('m月d日 H時i分~')}\n *{$event->name}* を開催します！\n\n{$event->description}\n\n参加を希望する方は「参加する！」ボタンを押してください！\n参加を取りやめたい方は「参加をやめる」ボタンを押してください。"
                 ]
             ],
             [
@@ -832,14 +866,25 @@ class EventController extends Controller
                         "type" => "button",
                         "text" => [
                             "type" => "plain_text",
-                            "text" => "参加する！",
+                            "text" => ":hand:参加する！",
                             "emoji" => true
                         ],
                         "value" => "$event->id",
-                        "action_id" => "register_to_attend_event"
+                        "style" => "primary",
+                        "action_id" => "register_participant"
+                    ],
+                    [
+                        "type" => "button",
+                        "text" => [
+                            "type" => "plain_text",
+                            "text" => "参加をやめる",
+                            "emoji" => true
+                        ],
+                        "value" => "$event->id",
+                        "action_id" => "remove_participant"
                     ]
                 ],
-                "block_id" => "register_to_attend_event",
+                "block_id" => "change_participant",
             ],
             [
                 "type" => "section",
@@ -854,17 +899,21 @@ class EventController extends Controller
     /**
      * リマインド投稿の内容を配列で返す(送信する際はjsonエンコードして送信)
      *
-     * @param object $event
+     * @param Event $event
      * @return array
      */
     public function getRemindEventBlocks($event)
     {
-        $event_participants = "";
-        foreach ($event->eventParticipants as $event_participant) {//参加者一覧を一つの文字列に
-            $event_participants .= "<@".$event_participant->slack_user_id."> ";
-        }
-        if ($event_participants === "") {//参加者がいない場合
-            $event_participants = 'まだいません。';
+        try {
+            $event_participants = "";
+            foreach ($event->eventParticipants as $event_participant) {//参加者一覧を一つの文字列に
+                $event_participants .= "<@".$event_participant->slack_user_id."> ";
+            }
+            if ($event_participants === "") {//参加者がいない場合
+                $event_participants = 'まだいません。';
+            }
+        } catch (\Throwable $th) {
+            Log::info($th);
         }
 
         return [
@@ -882,14 +931,25 @@ class EventController extends Controller
                         "type" => "button",
                         "text" => [
                             "type" => "plain_text",
-                            "text" => "参加する！",
+                            "text" => ":hand:参加する！",
                             "emoji" => true
                         ],
                         "value" => "$event->id",
-                        "action_id" => "register_to_attend_event"
+                        "style" => "primary",
+                        "action_id" => "register_participant"
+                    ],
+                    [
+                        "type" => "button",
+                        "text" => [
+                            "type" => "plain_text",
+                            "text" => "参加をやめる",
+                            "emoji" => true
+                        ],
+                        "value" => "$event->id",
+                        "action_id" => "remove_participant"
                     ]
                 ],
-                "block_id" => "register_to_attend_event",
+                "block_id" => "change_participant",
             ],
             [
                 "type" => "section",
