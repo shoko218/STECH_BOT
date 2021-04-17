@@ -23,7 +23,6 @@ class InteractiveEndpointController extends Controller
                         break;
                 }
             } elseif ($payload['type'] === "block_actions") {//block要素でアクションがあった場合
-                Log::info($payload['actions'][0]);
                 switch ($payload['actions'][0]['block_id']) {
                     case 'change_participant': //イベントの参加者登録
                         if ($payload['actions'][0]['action_id'] === "register_participant") {
