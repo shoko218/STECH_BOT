@@ -131,6 +131,99 @@ class EventController extends Controller
     }
 
     /**
+     * イベントを削除する
+     *
+     * @param array $payload
+     * @return void
+     */
+    public function deleteEvent($payload)
+    {
+        DB::beginTransaction();
+        try {
+            $event = Event::find($payload['actions'][0]['value']);
+
+            $event_name = $event->name;
+
+            if ($event->notice_ts != null) {//既にお知らせしていればお知らせ投稿を削除
+                $this->slack_client->chatDelete([
+                    'channel' => config('const.slack_id.general'),
+                    'ts' => $event->notice_ts,
+                ]);
+            }
+
+            if ($event->remind_ts != null) {//既にリマインドしていればリマインド投稿を削除
+                $this->slack_client->chatDelete([
+                    'channel' => config('const.slack_id.general'),
+                    'ts' => $event->remind_ts,
+                ]);
+            }
+
+            $event->delete();
+
+            $this->slack_client->chatPostMessage([
+                'channel' => $payload['user']['id'],
+                'text' => "イベント *{$event_name}* を削除しました。"
+            ]);
+
+            DB::commit();
+        } catch (\Throwable $th) {
+            DB::rollBack();
+            Log::info($th);
+            response('エラーが発生し、イベントを削除できませんでした。もう一度お試しください。', 200)->send();
+        }
+    }
+
+    /**
+     * イベントを表示する
+     *
+     * @param Request $request
+     * @return void
+     */
+    public function showEvents(Request $request)
+    {
+        response('', 200)->send();
+
+        try {
+            $this->slack_client->chatPostMessage([
+                'channel' => $request->user_id,
+                'blocks' => json_encode(
+                    [
+                        [
+                            "type" => "header",
+                            "text" => [
+                                "type" => "plain_text",
+                                "text" => "開催予定のイベント一覧",
+                                "emoji" => true
+                            ]
+                        ],
+                        [
+                            "type" => "divider",
+                        ],
+                    ]
+                ),
+            ]);
+
+            $events = Event::where(function ($query) {//開催前のイベントを選択
+                $query->where(function ($q) {//明日以降に開催されるイベント
+                    $q->whereDate('event_datetime', '>', date('Y-m-d'));
+                })->orWhere(function ($q) {//今日開催の、現在時刻より後に開催されるイベント
+                    $q->whereDate('event_datetime', date('Y-m-d'))
+                    ->whereTime('event_datetime', '>', date('H:i:s'));
+                });
+            })->get()->sortBy('event_datetime');
+
+            foreach ($events as $event) {
+                $this->slack_client->chatPostMessage([
+                    'channel' => $request->user_id,
+                    'blocks' => json_encode($this->getEventsBlockConstitution($event)),
+                ]);
+            }
+        } catch (\Throwable $th) {
+            Log::info($th);
+        }
+    }
+
+    /**
      * 開催予定のイベントを知らせる
      *
      * @return void
@@ -827,6 +920,56 @@ class EventController extends Controller
                         ]
                     ]
                 ]
+            ]
+        ];
+    }
+
+    /**
+     * イベント一覧を表示するメッセージの構成を配列で返す(送信する際はjsonエンコードして送信)
+     *
+     * @return array
+     */
+    public function getEventsBlockConstitution($event)
+    {
+        return[
+            [
+                "type" => "section",
+                "block_id" => "delete_event",
+                "text" => [
+                    "type" => "mrkdwn",
+                    "text" => "*{$event->name}*\n{$event->description}\nURL:{$event->url}\nイベント日時:{$event->event_datetime->format('Y年m月d日 H:i')}\nお知らせ日時:{$event->notice_datetime->format('Y年m月d日 H:i')}",
+                ],
+                "accessory" => [
+                    "type" => "button",
+                    "text" => [
+                        "type" => "plain_text",
+                        "text" => ":wastebasket: 削除",
+                        "emoji" => true
+                    ],
+                    "value" => "$event->id",
+                    "style" => "danger",
+                    "confirm" => [
+                        "title" => [
+                            "type" => "plain_text",
+                            "text" => "本当に削除しますか？"
+                        ],
+                        "text" => [
+                            "type" => "mrkdwn",
+                            "text" => "{$event->name}を削除しますか？"
+                        ],
+                        "confirm" => [
+                            "type" => "plain_text",
+                            "text" => "はい"
+                        ],
+                        "deny" => [
+                            "type" => "plain_text",
+                            "text" => "いいえ"
+                        ]
+                    ],
+                ]
+            ],
+            [
+                "type" => "divider",
             ]
         ];
     }

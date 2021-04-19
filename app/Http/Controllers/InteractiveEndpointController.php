@@ -31,6 +31,9 @@ class InteractiveEndpointController extends Controller
                             app()->make('App\Http\Controllers\EventParticipantController')->remove($payload);
                         }
                         break;
+                    case 'delete_event':
+                        app()->make('App\Http\Controllers\EventController')->deleteEvent($payload);
+                        break;
                 }
             }
         } catch (\Throwable $th) {
