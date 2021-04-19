@@ -178,6 +178,7 @@ class EventController extends Controller
      *
      * @param Request $request
      * @return void
+     * @todo この機能はそのうちwebアプリ等、別手段に移行したいと考えています。
      */
     public function showEvents(Request $request)
     {

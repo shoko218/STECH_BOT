@@ -24,7 +24,7 @@ class InteractiveEndpointController extends Controller
                 }
             } elseif ($payload['type'] === "block_actions") {//block要素でアクションがあった場合
                 switch ($payload['actions'][0]['block_id']) {
-                    case 'change_participant': //イベントの参加者登録
+                    case 'change_participant': //イベントの参加者に変更がある場合
                         if ($payload['actions'][0]['action_id'] === "register_participant") {
                             app()->make('App\Http\Controllers\EventParticipantController')->create($payload);
                         } elseif ($payload['actions'][0]['action_id'] === "remove_participant") {
