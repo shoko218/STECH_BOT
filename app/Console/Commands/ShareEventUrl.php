@@ -15,7 +15,7 @@ class ShareEventUrl extends Command
      *
      * @var string
      */
-    protected $signature = 'command:share_event_url';
+    protected $signature = 'event:share_url';
 
     /**
      * The console command description.

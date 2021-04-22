@@ -16,7 +16,7 @@ class NoticeEvent extends Command
      *
      * @var string
      */
-    protected $signature = 'command:notice_event';
+    protected $signature = 'event:notice';
 
     /**
      * The console command description.

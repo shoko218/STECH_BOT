@@ -12,7 +12,7 @@ class RemindEvent extends Command
      *
      * @var string
      */
-    protected $signature = 'command:remind_event';
+    protected $signature = 'event:remind';
 
     /**
      * The console command description.
