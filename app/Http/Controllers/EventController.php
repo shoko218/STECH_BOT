@@ -118,13 +118,12 @@ class EventController extends Controller
                 'notice_datetime' => $notice_datetime,
                 'url' => $event_url
             ]);
+            DB::commit();
 
             $this->slack_client->chatPostMessage([
                 'channel' => $payload['user']['id'],
                 'text' => "イベントを登録しました！\n\n```イベント名:{$event_name}\nイベント詳細:{$event_description}\nイベントURL:{$event_url}\nイベント日時:{$event_datetime->format('Y年m月d日 H:i')}\nお知らせする日時:{$notice_datetime->format('Y年m月d日 H:i')}```",
             ]);
-
-            DB::commit();
         } catch (\Throwable $th) {
             DB::rollBack();
             Log::info($th);
