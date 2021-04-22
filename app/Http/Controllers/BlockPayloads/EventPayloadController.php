@@ -8,13 +8,13 @@ use Illuminate\Http\Request;
 class EventPayloadController extends Controller
 {
     /**
-     * モーダルの構成を配列で返す(送信する際はjsonエンコードして送信)
+     * イベント作成モーダルの構成を配列で返す(送信する際はjsonエンコードして送信)
      *
      * @return array
      * @todo 現在、timepickerがベータ版にしかないのでactionに日時のセレクターを埋め込み、無理矢理日時が横並びになるようにしています。
      * timepickerが正式にリリースされたら速やかにblock kitの構成を変更し、それにしたがってInteractiveEndpointControllerでの処理も書き換えてください。
      */
-    public function getModalConstitution()
+    public function getCreateEventModalConstitution()
     {
         return [
             "callback_id" => "create_event",
@@ -26,12 +26,12 @@ class EventPayloadController extends Controller
             ],
             "submit" => [
                 "type" => "plain_text",
-                "text" => "Submit",
+                "text" => "登録",
                 "emoji" => true
             ],
             "close" => [
                 "type" => "plain_text",
-                "text" => "Cancel",
+                "text" => "キャンセル",
                 "emoji" => true
             ],
             "blocks" => [
@@ -588,11 +588,42 @@ class EventPayloadController extends Controller
     }
 
     /**
-     * イベント一覧を表示するメッセージの構成を配列で返す(送信する際はjsonエンコードして送信)
+     * イベント登録完了メッセージの構成を配列で返す(送信する際はjsonエンコードして送信)
      *
+     * @param Event $event
      * @return array
      */
-    public function getEventsBlockConstitution($event)
+    public function getCreatedEventMessageBlockConstitution($event)
+    {
+        return[
+            [
+                "type" => "header",
+                "text" => [
+                    "type" => "plain_text",
+                    "text" => ":spiral_calendar_pad:イベントを登録しました！:spiral_calendar_pad:",
+                    "emoji" => true
+                ]
+            ],
+            [
+                "type" => "divider"
+            ],
+            [
+                "type" => "section",
+                "text" => [
+                    "type" => "mrkdwn",
+                    "text" => "*イベント名*\n{$event->name}\n*イベント概要*\n{$event->description}\n*イベントURL*\n{$event->url}\n*イベント日時*\n{$event->event_datetime->format('Y年n月j日 G:i')}\n*お知らせ日時*\n{$event->notice_datetime->format('Y年n月j日 G:i')}"
+                ]
+            ],
+        ];
+    }
+
+    /**
+     * イベント一覧を表示するメッセージの構成の一部(イベント情報1つ)を配列で返す(送信する際はjsonエンコードして送信)
+     *
+     * @param Event $event
+     * @return array
+     */
+    public function getShowEventBlockConstitution($event)
     {
         return[
             [
@@ -600,7 +631,7 @@ class EventPayloadController extends Controller
                 "block_id" => "delete_event",
                 "text" => [
                     "type" => "mrkdwn",
-                    "text" => "*{$event->name}*\n{$event->description}\nURL:{$event->url}\nイベント日時:{$event->event_datetime->format('Y年m月d日 H:i')}\nお知らせ日時:{$event->notice_datetime->format('Y年m月d日 H:i')}",
+                    "text" => "*イベント名*\n{$event->name}\n*イベント概要*\n{$event->description}\n*イベントURL*\n{$event->url}\n*イベント日時*\n{$event->event_datetime->format('Y年n月j日 G:i')}\n*お知らせ日時*\n{$event->notice_datetime->format('Y年n月j日 G:i')}",
                 ],
                 "accessory" => [
                     "type" => "button",
@@ -638,6 +669,28 @@ class EventPayloadController extends Controller
     }
 
     /**
+     * イベント一覧を表示するメッセージのヘッダーを配列で返す(送信する際はjsonエンコードして送信)
+     *
+     * @return array
+     */
+    public function getShowHeaderBlockConstitution()
+    {
+        return[
+                [
+                    "type" => "header",
+                    "text" => [
+                        "type" => "plain_text",
+                        "text" => "開催予定のイベント一覧",
+                        "emoji" => true
+                    ]
+                ],
+                [
+                    "type" => "divider",
+                ],
+        ];
+    }
+
+    /**
      * お知らせ登録の内容を配列で返す(送信する際はjsonエンコードして送信)
      *
      * @param Event $event
@@ -659,10 +712,29 @@ class EventPayloadController extends Controller
 
         return [
             [
+                "type" => "header",
+                "text" => [
+                    "type" => "plain_text",
+                    "text" => ":mega:イベントのお知らせ:mega:",
+                    "emoji" => true
+                ]
+            ],
+            [
+                "type" => "divider"
+            ],
+            [
+                "type" => "header",
+                "text" => [
+                    "type" => "plain_text",
+                    "text" => "{$event->name}を開催します！",
+                    "emoji" => true
+                ]
+            ],
+            [
                 "type" => "section",
                 "text" => [
                     "type" => "mrkdwn",
-                    "text" => "<!channel> \n【イベントのお知らせ】\n{$event->event_datetime->format('m月d日 H時i分~')}\n *{$event->name}* を開催します！\n\n{$event->description}\n\n参加を希望する方は「参加する！」ボタンを押してください！\n参加を取りやめたい方は「参加をやめる」ボタンを押してください。"
+                    "text" => "*日時*\n{$event->event_datetime->format('Y年n月j日 G:i')}〜\n*概要*\n{$event->description}\n\n参加を希望する方は「参加する！」ボタンを押してください！\n参加を取りやめたい方は「参加をやめる」ボタンを押してください。\n"
                 ]
             ],
             [
@@ -693,12 +765,15 @@ class EventPayloadController extends Controller
                 "block_id" => "change_participant",
             ],
             [
+                "type" => "divider"
+            ],
+            [
                 "type" => "section",
                 "text" => [
                     "type" => "mrkdwn",
-                    "text" => "参加者\n $event_participants"
+                    "text" => "*参加者*\n $event_participants"
                 ]
-            ]
+            ],
         ];
     }
 
@@ -724,10 +799,29 @@ class EventPayloadController extends Controller
 
         return [
             [
+                "type" => "header",
+                "text" => [
+                    "type" => "plain_text",
+                    "text" => ":bell:イベントリマインド:bell:",
+                    "emoji" => true
+                ]
+            ],
+            [
+                "type" => "divider"
+            ],
+            [
+                "type" => "header",
+                "text" => [
+                    "type" => "plain_text",
+                    "text" => "本日、{$event->name}を開催します！",
+                    "emoji" => true
+                ]
+            ],
+            [
                 "type" => "section",
                 "text" => [
                     "type" => "mrkdwn",
-                    "text" => "<!channel>\n【リマインド】\nこの後{$event->event_datetime->format('H時i分')}から、 *{$event->name}* を開催します！\n\n{$event->description}\n\n参加を希望する方は「参加する！」ボタンを押してください！\n参加を取りやめたい方は「参加をやめる」ボタンを押してください。"
+                    "text" => "*時間*\n{$event->event_datetime->format('G:i')}〜\n*概要*\n{$event->description}\n\n参加を希望する方は「参加する！」ボタンを押してください！\n参加を取りやめたい方は「参加をやめる」ボタンを押してください。\n"
                 ]
             ],
             [
@@ -758,10 +852,43 @@ class EventPayloadController extends Controller
                 "block_id" => "change_participant",
             ],
             [
+                "type" => "divider"
+            ],
+            [
                 "type" => "section",
                 "text" => [
                     "type" => "mrkdwn",
                     "text" => "参加者\n $event_participants"
+                ]
+            ]
+        ];
+    }
+
+    /**
+     * イベントのURL共有投稿の内容を配列で返す(送信する際はjsonエンコードして送信)
+     *
+     * @param Event $event
+     * @return array
+     */
+    public function getShareEventUrlBlocks($event)
+    {
+        return [
+            [
+                "type" => "header",
+                "text" => [
+                    "type" => "plain_text",
+                    "text" => ":link:イベントURLの共有:link:",
+                    "emoji" => true
+                ]
+            ],
+            [
+                "type" => "divider"
+            ],
+            [
+                "type" => "section",
+                "text" => [
+                    "type" => "mrkdwn",
+                    "text" => "この後{$event->event_datetime->format('G:i')}から開催する *{$event->name}* のURLはこちら！\n*{$event->url}*"
                 ]
             ]
         ];

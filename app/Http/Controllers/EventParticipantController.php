@@ -30,7 +30,7 @@ class EventParticipantController extends Controller
 
         DB::beginTransaction();
         try {
-            $event = Event::find($payload['message']['blocks'][1]['elements'][0]['value']);
+            $event = Event::find($payload['message']['blocks'][4]['elements'][0]['value']);
             $participant_slack_user_id = $payload['user']['id'];
 
             $registered = EventParticipant::where('event_id', $event->id)->where('slack_user_id', $participant_slack_user_id)->first();
@@ -59,7 +59,7 @@ class EventParticipantController extends Controller
 
         DB::beginTransaction();
         try {
-            $event = Event::find($payload['message']['blocks'][1]['elements'][0]['value']);
+            $event = Event::find($payload['message']['blocks'][4]['elements'][0]['value']);
             $participant_slack_user_id = $payload['user']['id'];
 
             $registered = EventParticipant::where('event_id', $event->id)->where('slack_user_id', $participant_slack_user_id)->first();

@@ -35,7 +35,7 @@ class EventController extends Controller
 
         try {
             $params = [
-                'view' => json_encode($this->event_payloads->getModalConstitution()),
+                'view' => json_encode($this->event_payloads->getCreateEventModalConstitution()),
                 'trigger_id' => $request->trigger_id
             ];
 
@@ -122,7 +122,7 @@ class EventController extends Controller
 
             $this->slack_client->chatPostMessage([
                 'channel' => $payload['user']['id'],
-                'text' => "イベントを登録しました！\n\n```イベント名:{$event_name}\nイベント詳細:{$event_description}\nイベントURL:{$event_url}\nイベント日時:{$event_datetime->format('Y年m月d日 H:i')}\nお知らせする日時:{$notice_datetime->format('Y年m月d日 H:i')}```",
+                'blocks' => json_encode($this->event_payloads->getCreatedEventMessageBlockConstitution($event))
             ]);
         } catch (\Throwable $th) {
             DB::rollBack();
@@ -188,21 +188,7 @@ class EventController extends Controller
         try {
             $this->slack_client->chatPostMessage([
                 'channel' => $request->user_id,
-                'blocks' => json_encode(
-                    [
-                        [
-                            "type" => "header",
-                            "text" => [
-                                "type" => "plain_text",
-                                "text" => "開催予定のイベント一覧",
-                                "emoji" => true
-                            ]
-                        ],
-                        [
-                            "type" => "divider",
-                        ],
-                    ]
-                ),
+                'blocks' => json_encode($this->event_payloads->getShowHeaderBlockConstitution()),
             ]);
 
             $events = Event::where(function ($query) {//開催前のイベントを選択
@@ -217,7 +203,7 @@ class EventController extends Controller
             foreach ($events as $event) {
                 $this->slack_client->chatPostMessage([
                     'channel' => $request->user_id,
-                    'blocks' => json_encode($this->event_payloads->getEventsBlockConstitution($event)),
+                    'blocks' => json_encode($this->event_payloads->getShowEventBlockConstitution($event)),
                 ]);
             }
         } catch (\Throwable $th) {
@@ -308,7 +294,7 @@ class EventController extends Controller
             foreach ($coming_soon_events as $event) {
                 $this->slack_client->chatPostMessage([
                     'channel' => config('const.slack_id.general'),
-                    'text' => "<!channel> 【イベントURLのお知らせ】\nこの後{$event->event_datetime->format('H時i分')}から開催する *{$event->name}* のURLはこちらです!\n{$event->url}",
+                    'blocks' => json_encode($this->event_payloads->getShareEventUrlBlocks($event)),
                 ]);
             }
         } catch (\Throwable $th) {
