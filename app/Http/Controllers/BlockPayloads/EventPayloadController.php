@@ -858,7 +858,7 @@ class EventPayloadController extends Controller
                 "type" => "section",
                 "text" => [
                     "type" => "mrkdwn",
-                    "text" => "参加者\n $event_participants"
+                    "text" => "*参加者*\n $event_participants"
                 ]
             ]
         ];
