@@ -200,10 +200,17 @@ class EventController extends Controller
                 });
             })->get()->sortBy('event_datetime');
 
-            foreach ($events as $event) {
+            if (!$events->isEmpty()) {
+                foreach ($events as $event) {
+                    $this->slack_client->chatPostMessage([
+                        'channel' => $request->user_id,
+                        'blocks' => json_encode($this->event_payloads->getShowEventBlockConstitution($event)),
+                    ]);
+                }
+            } else {
                 $this->slack_client->chatPostMessage([
                     'channel' => $request->user_id,
-                    'blocks' => json_encode($this->event_payloads->getShowEventBlockConstitution($event)),
+                    'text' => "開催予定のイベントはありません。",
                 ]);
             }
         } catch (\Throwable $th) {
