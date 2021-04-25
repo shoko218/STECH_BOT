@@ -12,7 +12,7 @@ class IntroduceCounselingForm extends Command
      *
      * @var string
      */
-    protected $signature = 'command:introduce_counseling_form';
+    protected $signature = 'counseling:introduce_form';
 
     /**
      * The console command description.

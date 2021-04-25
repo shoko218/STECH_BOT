@@ -25,7 +25,7 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule)
     {
-        $schedule->command('command:introduce_counseling_form')->weeklyOn(1, '18:00');
+        $schedule->command('counseling:introduce_form')->weeklyOn(1, '18:00');
     }
 
     /**
