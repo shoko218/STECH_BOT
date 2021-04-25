@@ -11,7 +11,7 @@ class IntroduceQuestionForm extends Command
      *
      * @var string
      */
-    protected $signature = 'command:introduce_question_form';
+    protected $signature = 'question:introduce';
 
     /**
      * The console command description.
