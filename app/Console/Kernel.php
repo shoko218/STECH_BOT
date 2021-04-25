@@ -24,7 +24,7 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule)
     {
-        $schedule->command('command:confirm_meeting')->weeklyOn(3, '10:00');
+        $schedule->command('meeting:confirm')->weeklyOn(3, '10:00');
     }
 
     /**

@@ -12,7 +12,7 @@ class ConfirmMeeting extends Command
      *
      * @var string
      */
-    protected $signature = 'command:confirm_meeting';
+    protected $signature = 'meeting:confirm';
 
     /**
      * The console command description.
