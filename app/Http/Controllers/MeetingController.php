@@ -11,9 +11,21 @@ class MeetingController extends Controller
 {
     private $slack_client;
 
-    public function __construct()
+    private $guzzle;
+
+    public function __construct($generated_slack_client = null, $generated_guzzle_client = null)
     {
-        $this->slack_client = ClientFactory::create(config('services.slack.token'));
+        if (is_null($generated_slack_client)) {
+            $this->slack_client = ClientFactory::create(config('services.slack.token'));
+        } else {
+            $this->slack_client = $generated_slack_client;
+        }
+
+        if (is_null($generated_guzzle_client)) {
+            $this->guzzle = new \GuzzleHttp\Client();
+        } else {
+            $this->guzzle = $generated_guzzle_client;
+        }
     }
 
    /**
@@ -31,8 +43,11 @@ class MeetingController extends Controller
                 'blocks' => json_encode(app()->make('App\Http\Controllers\BlockPayloads\MeetingPayloadController')->createMeetingConfirmationMessageBlocks())
             ]);
 
+            return true;
+
         } catch (SlackErrorResponse $e) {
             echo $e->getMessage();
+            return false;
         }
     }
 
@@ -46,76 +61,91 @@ class MeetingController extends Controller
     * @var string $second_meeting_day_name 2回目のミーティングの曜日。現在は木曜日
     * @return true|false ミーティングをスケジュールした場合はtrue、開催がない場合とvalueが正しく判定されなかった場合はfalse
     */
-    public function scheduleMeetings($button_value, $first_meeting_day, $second_meeting_day) 
+    public function scheduleMeetings($array_about_next_meeting) 
     {
         try {
+            $button_value = $array_about_next_meeting[0];
+            $first_meeting_day = $array_about_next_meeting[1];
+            $second_meeting_day = $array_about_next_meeting[2];
+
             $first_meeting_day_name = '月曜日';
             $second_meeting_day_name = '木曜日';
 
             switch ($button_value) {
-                case 'both_meetings':
+                case 'both_meetings':                    
                     $this->slack_client->chatScheduleMessage([
-                        'channel' => config('const.slack_id.general'),
+                        'channel' => config('const.slack_id.administrator'),
                         'post_at' => $first_meeting_day,
                         'blocks' => json_encode(app()->make('App\Http\Controllers\BlockPayloads\MeetingPayloadController')->createMeetingMessageBlocks($first_meeting_day_name))
                     ]);
+
                     $this->slack_client->chatScheduleMessage([
-                        'channel' => config('const.slack_id.general'),
+                        'channel' => config('const.slack_id.administrator'),
                         'post_at' => $second_meeting_day,
                         'blocks' => json_encode(app()->make('App\Http\Controllers\BlockPayloads\MeetingPayloadController')->createMeetingMessageBlocks($second_meeting_day_name))
-                    ]);    
+                    ]);
+
                     return true;
                 case 'first_meeting':
                     $this->slack_client->chatScheduleMessage([
-                        'channel' => config('const.slack_id.general'),
+                        'channel' => config('const.slack_id.administrator'),
                         'post_at' => $first_meeting_day,
                         'blocks' => json_encode(app()->make('App\Http\Controllers\BlockPayloads\MeetingPayloadController')->createMeetingMessageBlocks($first_meeting_day_name))
                     ]);
+
                     return true;
                 case 'second_meeting':
                     $this->slack_client->chatScheduleMessage([
-                        'channel' => config('const.slack_id.general'),
+                        'channel' => config('const.slack_id.administrator'),
                         'post_at' => $second_meeting_day,
                         'blocks' => json_encode(app()->make('App\Http\Controllers\BlockPayloads\MeetingPayloadController')->createMeetingMessageBlocks($second_meeting_day_name))
                     ]);
+
                     return true;
                 case 'not_both_meetings':
                     return false;
                 default:
                     $this->slack_client->chatPostMessage([
-                        'channel' => config('const.slack_id.general'),
+                        'channel' => config('const.slack_id.administrator'),
                         'text' => 'エラー発生によりミーティングのスケジュールを行うことができませんでした',
                     ]);
+
                     return false;
             }
 
         } catch (SlackErrorResponse $e) {
             echo $e->getMessage();
+            return false;
         }
     }
 
    /**
     *  スケジュール済みのミーティングと重複したものを削除する
-    *
-    * @param int $next_monday 次週の月曜日の日時(UNIXTIME形式)
-    * @param int $next_thursday 次週の木曜日の日時(UNIXTIME形式)
     */
-    public function deleteOverlappedMeeting ($next_monday, $next_thursday)
+    public function deleteOverlappedMeeting ($array_about_next_meeting_days)
     {
         try {
+            $next_monday = $array_about_next_meeting_days[0];
+            $next_thursday = $array_about_next_meeting_days[1];
+
             $scheduled_meeting_list = $this->getScheduledMeetingList();
-                    
+
+            $deleted = [];
             foreach ($scheduled_meeting_list as $meeting) { 
                 if ($meeting['post_at'] == $next_monday || $meeting['post_at'] == $next_thursday) {
                     $this->slack_client->chatDeleteScheduledMessage([
                         'channel' => $meeting['channel_id'],
                         'scheduled_message_id' => $meeting['id']
                     ]);
+                    $deleted[] = $meeting;
                 }
             }
 
-        } catch (\Throwable $th) {
-            Log::info($th);
+            return $deleted;
+
+        } catch (SlackErrorResponse $e) {
+            echo $e->getMessage();
+            return false;
         }
     }
 
@@ -128,18 +158,23 @@ class MeetingController extends Controller
     public function getScheduledMeetingList ()
     {
         try {
-            $guzzle = new \GuzzleHttp\Client();
-            $response = $guzzle->request(
+            $response = $this->guzzle->request(
                 'GET', 
                 'https://slack.com/api/chat.scheduledMessages.list', 
                 ['headers' => ['Authorization' => 'Bearer ' . config('services.slack.token')]]
             );
-    
+            
             $scheduled_list = json_decode($response->getBody()->getContents(), true);
+            
             return $scheduled_list['scheduled_messages'];
 
+        } catch (\InvalidArgumentException $e) {
+            Log::info($e->getMessage());
+            return 'invalid argument exception';
+            
         } catch (\Throwable $th) {
             Log::info($th);
+            return false;
         }
     }
 
@@ -165,33 +200,38 @@ class MeetingController extends Controller
             $next_monday = intval($today->startOfWeek()->addDays(7)->addHours(10)->format('U'));
             $next_thursday = intval($today->startOfWeek()->addDays(10)->addHours(10)->format('U'));
 
-            $this->deleteOverlappedMeeting($next_monday, $next_thursday);
-            $scheduling_result = $this->scheduleMeetings($next_meeting[0]['value'], $next_monday, $next_thursday);
+            $this->deleteOverlappedMeeting([$next_monday, $next_thursday]);
+            $scheduling_result = $this->scheduleMeetings([$next_meeting[0]['value'], $next_monday, $next_thursday]);
 
             if (!$scheduling_result) {
                 $this->slack_client->chatPostMessage([
                     'channel' => config('const.slack_id.administrator'),
                     'text' => '次回ミーティングはパスされました！'
                 ]);
-                exit;
-            }
 
-            $next_meetings = $this->getScheduledMeetingList();
-            $next_meeting_date_list = array();
-            foreach ($next_meetings as $meeting) {
-                $next_meeting_date_list[] = CarbonImmutable::createFromTimestamp($meeting['post_at'])->format('Y年m月d日');
-            }
+                return true;
 
-            if (count($next_meeting_date_list) > 1) {
-                $this->slack_client->chatPostMessage([
-                    'channel' => config('const.slack_id.administrator'),
-                    'text' => "次回ミーティングの予定を確定しました！\n {$next_meeting_date_list[0]} と {$next_meeting_date_list[1]} に通知します"
-                ]);
             } else {
-                $this->slack_client->chatPostMessage([
-                    'channel' => config('const.slack_id.administrator'),
-                    'text' => "次回ミーティングの予定を確定しました！\n {$next_meeting_date_list[0]} に通知します"
-                ]);
+                $next_meetings = $this->getScheduledMeetingList();
+                $next_meeting_date_list = array();
+                foreach ($next_meetings as $meeting) {
+                    $next_meeting_date_list[] = CarbonImmutable::createFromTimestamp($meeting['post_at'])->format('Y年m月d日');
+                }
+    
+                if (count($next_meeting_date_list) > 1) {
+                    $this->slack_client->chatPostMessage([
+                        'channel' => config('const.slack_id.administrator'),
+                        'text' => "次回ミーティングの予定を確定しました！\n {$next_meeting_date_list[0]} と {$next_meeting_date_list[1]} に通知します"
+                    ]);
+                } else {
+                    $this->slack_client->chatPostMessage([
+                        'channel' => config('const.slack_id.administrator'),
+                        'text' => "次回ミーティングの予定を確定しました！\n {$next_meeting_date_list[0]} に通知します"
+                    ]);
+                }
+
+                return $next_meeting_date_list;
+
             }
             
         } catch (\Throwable $th) {
@@ -200,6 +240,8 @@ class MeetingController extends Controller
                 'channel' => config('const.slack_id.administrator'),
                 'text' => 'ミーティングの設定は正常に行われませんでした。'
             ]);
+
+            return false;
         }
     }
 
