@@ -74,13 +74,13 @@ class MeetingController extends Controller
             switch ($button_value) {
                 case 'both_meetings':                    
                     $this->slack_client->chatScheduleMessage([
-                        'channel' => config('const.slack_id.administrator'),
+                        'channel' => config('const.slack_id.general'),
                         'post_at' => $first_meeting_day,
                         'blocks' => json_encode(app()->make('App\Http\Controllers\BlockPayloads\MeetingPayloadController')->createMeetingMessageBlocks($first_meeting_day_name))
                     ]);
 
                     $this->slack_client->chatScheduleMessage([
-                        'channel' => config('const.slack_id.administrator'),
+                        'channel' => config('const.slack_id.general'),
                         'post_at' => $second_meeting_day,
                         'blocks' => json_encode(app()->make('App\Http\Controllers\BlockPayloads\MeetingPayloadController')->createMeetingMessageBlocks($second_meeting_day_name))
                     ]);
@@ -88,7 +88,7 @@ class MeetingController extends Controller
                     return true;
                 case 'first_meeting':
                     $this->slack_client->chatScheduleMessage([
-                        'channel' => config('const.slack_id.administrator'),
+                        'channel' => config('const.slack_id.general'),
                         'post_at' => $first_meeting_day,
                         'blocks' => json_encode(app()->make('App\Http\Controllers\BlockPayloads\MeetingPayloadController')->createMeetingMessageBlocks($first_meeting_day_name))
                     ]);
@@ -96,7 +96,7 @@ class MeetingController extends Controller
                     return true;
                 case 'second_meeting':
                     $this->slack_client->chatScheduleMessage([
-                        'channel' => config('const.slack_id.administrator'),
+                        'channel' => config('const.slack_id.general'),
                         'post_at' => $second_meeting_day,
                         'blocks' => json_encode(app()->make('App\Http\Controllers\BlockPayloads\MeetingPayloadController')->createMeetingMessageBlocks($second_meeting_day_name))
                     ]);
