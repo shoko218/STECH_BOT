@@ -37,6 +37,6 @@ class IntroduceQuestionForm extends Command
      */
     public function handle()
     {
-        app()->make('App\Http\Controllers\AnonymousQuestionController')->IntroduceQuestionForm();
+        app()->make('App\Http\Controllers\AnonymousQuestionController')->introduceQuestionForm();
     }
 }

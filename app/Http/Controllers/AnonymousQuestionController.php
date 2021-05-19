@@ -11,9 +11,13 @@ class AnonymousQuestionController extends Controller
 {
     private $slack_client;
         
-    public function __construct()
+    public function __construct($generated_slack_client = null)
     {
-        $this->slack_client = ClientFactory::create(config('services.slack.token'));
+        if (is_null($generated_slack_client)) {
+            $this->slack_client = ClientFactory::create(config('services.slack.token'));
+        } else {
+            $this->slack_client = $generated_slack_client;
+        }
     }
     
    /**
@@ -33,8 +37,10 @@ class AnonymousQuestionController extends Controller
 
             $this->slack_client->viewsOpen($query_params);
 
+            return 'ok';
         } catch (SlackErrorResponse $e) {
             Log::info($e->getMessage());
+            return 'error';
         }
     }
 
@@ -81,15 +87,18 @@ class AnonymousQuestionController extends Controller
                 ])
             ]);
 
+            return true;
+
         } catch (SlackErrorResponse $e) {
             Log::info($e->getMessage());
+            return false;
         }
     }
 
    /**
     * 匿名質問フォームを紹介するメッセージを送る
     */
-    public function IntroduceQuestionForm ()
+    public function introduceQuestionForm ()
     {
         try {
             $this->slack_client->chatPostMessage([
@@ -97,8 +106,11 @@ class AnonymousQuestionController extends Controller
                 'blocks' => json_encode(app()->make('App\Http\Controllers\BlockPayloads\AnonymousQuestionPayloadController')->createQuestionFormIntroductionBlocks())
             ]);
 
+            return true;
+
         } catch (SlackErrorResponse $e) {
             Log::info($e->getMessage());
+            return false;
         }
     }
 }
