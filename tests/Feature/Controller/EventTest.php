@@ -66,6 +66,10 @@ class EventTest extends TestCase
      */
     public function testSuccessShowCreateEventModal()
     {
+        $event_payload_mock = Mockery::mock('overload:App\Http\Controllers\BlockPayloads\EventPayloadController');
+        $event_payload_mock->shouldReceive('getCreateEventModalConstitution')
+            ->andReturn(['key' => 'value']);
+
         $guzzle_http_client_mock = Mockery::mock('overload:GuzzleHttp\Client');
         $guzzle_http_client_mock->shouldReceive('request')
             ->withArgs(function ($method, $url, $options) {
@@ -96,14 +100,15 @@ class EventTest extends TestCase
      */
     public function testErrorShowCreateEventModalIfExpectionOccurs()
     {
-        $trigger_id = $this->faker->userName;
-
-        $error = 'GuzzleHttp returned error code';
-
+        $event_payload_mock = Mockery::mock('overload:App\Http\Controllers\BlockPayloads\EventPayloadController');
+        $event_payload_mock->shouldReceive('getCreateEventModalConstitution')
+            ->andReturn(['key' => 'value']);
         $guzzle_http_client_mock = Mockery::mock('overload:GuzzleHttp\Client');
+        $error = 'GuzzleHttp returned error code';
         $guzzle_http_client_mock->shouldReceive('request')
-            ->andThrow(new InvalidArgumentException($error))
-            ->getMock();
+            ->andThrow(new InvalidArgumentException($error));
+
+        $trigger_id = $this->faker->userName;
 
         $request = new Request();
         $request->merge([
@@ -121,6 +126,10 @@ class EventTest extends TestCase
      */
     public function testSuccessCreateEvent()
     {
+        $event_payload_mock = Mockery::mock('overload:App\Http\Controllers\BlockPayloads\EventPayloadController');
+        $event_payload_mock->shouldReceive('getCreatedEventMessageBlockConstitution')
+            ->andReturn(['key' => 'value']);
+
         $tmp_event_datetime = $this->faker->dateTimeBetween('+2 week', '+4 week');
         $tmp_notice_datetime = $this->faker->dateTimeBetween('tomorrow', '+13 day');
 
@@ -212,6 +221,10 @@ class EventTest extends TestCase
      */
     public function testErrorCreateEventIfNoticeDatetimeIsThePast()
     {
+        $event_payload_mock = Mockery::mock('overload:App\Http\Controllers\BlockPayloads\EventPayloadController');
+        $event_payload_mock->shouldReceive('getCreatedEventMessageBlockConstitution')
+            ->andReturn(['key' => 'value']);
+
         $tmp_datetime = $this->faker->dateTimeBetween('+2 week', '+4 week');
 
         $event_datetime = new DateTime($tmp_datetime->format('Y-m-d H:'.($this->faker->numberBetween(0, 3) * 15).':00'));
@@ -306,6 +319,10 @@ class EventTest extends TestCase
      */
     public function testErrorCreateEventIfEventDatetimeIsThePast()
     {
+        $event_payload_mock = Mockery::mock('overload:App\Http\Controllers\BlockPayloads\EventPayloadController');
+        $event_payload_mock->shouldReceive('getCreatedEventMessageBlockConstitution')
+            ->andReturn(['key' => 'value']);
+
         $tmp_event_datetime = $this->faker->dateTimeBetween('-1 month', '-1 day');
         $tmp_notice_datetime = $this->faker->dateTimeBetween('tomorrow', '+1 month');
 
@@ -400,6 +417,10 @@ class EventTest extends TestCase
      */
     public function testErrorCreateEventIfEventDateIsBeforeNoticeDate()
     {
+        $event_payload_mock = Mockery::mock('overload:App\Http\Controllers\BlockPayloads\EventPayloadController');
+        $event_payload_mock->shouldReceive('getCreatedEventMessageBlockConstitution')
+            ->andReturn(['key' => 'value']);
+
         $tmp_event_datetime = $this->faker->dateTimeBetween('tomorrow', '+13 day');
         $tmp_notice_datetime = $this->faker->dateTimeBetween('+2 week', '+4 week');
 
@@ -494,6 +515,10 @@ class EventTest extends TestCase
      */
     public function testErrorCreateEventIfEventURLIsInvalid()
     {
+        $event_payload_mock = Mockery::mock('overload:App\Http\Controllers\BlockPayloads\EventPayloadController');
+        $event_payload_mock->shouldReceive('getCreatedEventMessageBlockConstitution')
+            ->andReturn(['key' => 'value']);
+
         $tmp_event_datetime = $this->faker->dateTimeBetween('+2 week', '+4 week');
         $tmp_notice_datetime = $this->faker->dateTimeBetween('tomorrow', '+13 day');
 
@@ -588,6 +613,10 @@ class EventTest extends TestCase
      */
     public function testErrorCreateEventIfExpectionOccurs()
     {
+        $event_payload_mock = Mockery::mock('overload:App\Http\Controllers\BlockPayloads\EventPayloadController');
+        $event_payload_mock->shouldReceive('getCreatedEventMessageBlockConstitution')
+            ->andReturn(['key' => 'value']);
+
         $payload = [
             'user' => [
                 'id' => $this->faker->userName
@@ -603,6 +632,9 @@ class EventTest extends TestCase
     /**
      * EventController@deleteEventの正常処理テスト
      * お知らせもリマインドもしていない時にイベントを削除できるかどうか
+     *
+     * @runInSeparateProcess
+     * @preserveGlobalState disabled
      */
     public function testSuccessDeleteEvent()
     {
@@ -643,6 +675,9 @@ class EventTest extends TestCase
     /**
      * EventController@deleteEventの正常処理テスト
      * 既にお知らせしている時にイベントを削除できるかどうか
+     *
+     * @runInSeparateProcess
+     * @preserveGlobalState disabled
      */
     public function testSuccessDeleteEventIfAlreadyNoticed()
     {
@@ -689,6 +724,9 @@ class EventTest extends TestCase
     /**
      * EventController@deleteEventの正常処理テスト
      * 既にリマインドしている時にイベントを削除できるかどうか
+     *
+     * @runInSeparateProcess
+     * @preserveGlobalState disabled
      */
     public function testSuccessDeleteEventIfAlreadyReminded()
     {
@@ -735,6 +773,9 @@ class EventTest extends TestCase
     /**
      * EventController@deleteEventの例外処理テスト
      * イベント削除時に例外が発生した場合、例外処理を無事に行えるかどうか
+     *
+     * @runInSeparateProcess
+     * @preserveGlobalState disabled
      */
     public function testErrorDeleteEventIfExpectionOccurs()
     {
@@ -755,6 +796,12 @@ class EventTest extends TestCase
      */
     public function testSuccessShowEventIfEventIs()
     {
+        $event_payload_mock = Mockery::mock('overload:App\Http\Controllers\BlockPayloads\EventPayloadController');
+        $event_payload_mock->shouldReceive('getShowEventBlockConstitution')
+            ->andReturn(['key' => 'value'])
+            ->shouldReceive('getShowHeaderBlockConstitution')
+            ->andReturn(['key' => 'value']);
+
         $count = $this->faker->numberBetween(1, 20);
         factory(Event::class, $count)->create();
 
@@ -779,6 +826,12 @@ class EventTest extends TestCase
      */
     public function testSuccessShowEventIfEventIsNot()
     {
+        $event_payload_mock = Mockery::mock('overload:App\Http\Controllers\BlockPayloads\EventPayloadController');
+        $event_payload_mock->shouldReceive('getShowEventBlockConstitution')
+            ->andReturn(['key' => 'value'])
+            ->shouldReceive('getShowHeaderBlockConstitution')
+            ->andReturn(['key' => 'value']);
+
         $request = new Request();
         $request->merge([
             'user_id' => $this->faker->userName,
@@ -804,12 +857,11 @@ class EventTest extends TestCase
     public function testErrorShowEventIfExpectionOccurs()
     {
         $event_payload_mock = Mockery::mock('overload:App\Http\Controllers\BlockPayloads\EventPayloadController');
-
         $error = 'Event payload controller returned error code';
-
         $event_payload_mock->shouldReceive('getShowHeaderBlockConstitution')
             ->andThrow(new InvalidArgumentException($error))
-            ->getMock();
+            ->shouldReceive('getShowEventBlockConstitution')
+            ->andThrow(new InvalidArgumentException($error));
 
         $request = new Request();
         $request->merge([
@@ -827,6 +879,10 @@ class EventTest extends TestCase
      */
     public function testSuccessNoticeEvent()
     {
+        $event_payload_mock = Mockery::mock('overload:App\Http\Controllers\BlockPayloads\EventPayloadController');
+        $event_payload_mock->shouldReceive('getNoticeEventBlocks')
+            ->andReturn(['key' => 'value']);
+
         $should_noticed_count = $this->faker->numberBetween(1, 20);
         $should_not_noticed_count = $this->faker->numberBetween(1, 20);
         $noticed_count = $this->faker->numberBetween(1, 20);
@@ -854,6 +910,10 @@ class EventTest extends TestCase
      */
     public function testSuccessNoticeEventIfEventIsNot()
     {
+        $event_payload_mock = Mockery::mock('overload:App\Http\Controllers\BlockPayloads\EventPayloadController');
+        $event_payload_mock->shouldReceive('getNoticeEventBlocks')
+            ->andReturn(['key' => 'value']);
+
         $should_not_noticed_count = $this->faker->numberBetween(1, 20);
         $noticed_count = $this->faker->numberBetween(1, 20);
 
@@ -880,12 +940,9 @@ class EventTest extends TestCase
     public function testErrorNoticeEventIfExpectionOccurs()
     {
         $event_payload_mock = Mockery::mock('overload:App\Http\Controllers\BlockPayloads\EventPayloadController');
-
         $error = 'Event payload controller returned error code';
-
         $event_payload_mock->shouldReceive('getNoticeEventBlocks')
-            ->andThrow(new InvalidArgumentException($error))
-            ->getMock();
+            ->andThrow(new InvalidArgumentException($error));
 
         $should_noticed_count = $this->faker->numberBetween(1, 20);
 
@@ -904,6 +961,10 @@ class EventTest extends TestCase
      */
     public function testSuccessRemindEvent()
     {
+        $event_payload_mock = Mockery::mock('overload:App\Http\Controllers\BlockPayloads\EventPayloadController');
+        $event_payload_mock->shouldReceive('getRemindEventBlocks')
+            ->andReturn(['key' => 'value']);
+
         $should_reminded_count = $this->faker->numberBetween(1, 20);
         $should_not_reminded_count = $this->faker->numberBetween(1, 20);
         $reminded_count = $this->faker->numberBetween(1, 20);
@@ -931,6 +992,10 @@ class EventTest extends TestCase
      */
     public function testSuccessRemindEventIfEventIsNot()
     {
+        $event_payload_mock = Mockery::mock('overload:App\Http\Controllers\BlockPayloads\EventPayloadController');
+        $event_payload_mock->shouldReceive('getRemindEventBlocks')
+            ->andReturn(['key' => 'value']);
+
         $should_not_reminded_count = $this->faker->numberBetween(1, 20);
         $reminded_count = $this->faker->numberBetween(1, 20);
 
@@ -957,12 +1022,9 @@ class EventTest extends TestCase
     public function testErrorRemindEventIfExpectionOccurs()
     {
         $event_payload_mock = Mockery::mock('overload:App\Http\Controllers\BlockPayloads\EventPayloadController');
-
         $error = 'Event payload controller returned error code';
-
         $event_payload_mock->shouldReceive('getRemindEventBlocks')
-            ->andThrow(new InvalidArgumentException($error))
-            ->getMock();
+            ->andThrow(new InvalidArgumentException($error));
 
         $should_reminded_count = $this->faker->numberBetween(1, 20);
 
@@ -982,6 +1044,10 @@ class EventTest extends TestCase
 
     public function testSuccessShareEventUrl()
     {
+        $event_payload_mock = Mockery::mock('overload:App\Http\Controllers\BlockPayloads\EventPayloadController');
+        $event_payload_mock->shouldReceive('getShareEventUrlBlocks')
+            ->andReturn(['key' => 'value']);
+
         $should_shared_url_count = $this->faker->numberBetween(1, 20);
         $should_not_shared_url_count = $this->faker->numberBetween(1, 20);
 
@@ -1007,6 +1073,10 @@ class EventTest extends TestCase
 
     public function testSuccessShareEventUrlIfEventIsNot()
     {
+        $event_payload_mock = Mockery::mock('overload:App\Http\Controllers\BlockPayloads\EventPayloadController');
+        $event_payload_mock->shouldReceive('getShareEventUrlBlocks')
+            ->andReturn(['key' => 'value']);
+
         $should_not_shared_url_count = $this->faker->numberBetween(1, 20);
 
         $now = new DateTime();
@@ -1031,12 +1101,9 @@ class EventTest extends TestCase
     public function testErrorShareEventUrlIfExpectionOccurs()
     {
         $event_payload_mock = Mockery::mock('overload:App\Http\Controllers\BlockPayloads\EventPayloadController');
-
         $error = 'Event payload controller returned error code';
-
         $event_payload_mock->shouldReceive('getShareEventUrlBlocks')
-            ->andThrow(new InvalidArgumentException($error))
-            ->getMock();
+            ->andThrow(new InvalidArgumentException($error));
 
         $should_shared_url_count = $this->faker->numberBetween(1, 20);
 
@@ -1057,6 +1124,10 @@ class EventTest extends TestCase
 
     public function testSuccessUpdateEventPostsIfEventIsAlreadyNoticed()
     {
+        $event_payload_mock = Mockery::mock('overload:App\Http\Controllers\BlockPayloads\EventPayloadController');
+        $event_payload_mock->shouldReceive('getNoticeEventBlocks')
+            ->andReturn(['key' => 'value']);
+
         $event = factory(Event::class)->create([
             'notice_ts' => $this->faker->randomNumber
         ]);
@@ -1073,6 +1144,10 @@ class EventTest extends TestCase
 
     public function testSuccessUpdateEventPostsIfEventIsAlreadyReminded()
     {
+        $event_payload_mock = Mockery::mock('overload:App\Http\Controllers\BlockPayloads\EventPayloadController');
+        $event_payload_mock->shouldReceive('getRemindEventBlocks')
+            ->andReturn(['key' => 'value']);
+
         $event = factory(Event::class)->create([
             'remind_ts' => $this->faker->randomNumber
         ]);
@@ -1093,14 +1168,12 @@ class EventTest extends TestCase
     public function testErrorUpdateEventPostsIfExpectionOccurs()
     {
         $event_payload_mock = Mockery::mock('overload:App\Http\Controllers\BlockPayloads\EventPayloadController');
-
         $error = 'Event payload controller returned error code';
-
-        $event_payload_mock->shouldReceive('getShareEventUrlBlocks')
+        $event_payload_mock->shouldReceive('getNoticeEventBlocks')
             ->andThrow(new InvalidArgumentException($error))
             ->shouldReceive('getRemindEventBlocks')
-            ->andThrow(new InvalidArgumentException($error))
-            ->getMock();
+            ->andThrow(new InvalidArgumentException($error));
+
         $event = factory(Event::class)->create([
             'notice_ts' => $this->faker->randomNumber,
             'remind_ts' => $this->faker->randomNumber
