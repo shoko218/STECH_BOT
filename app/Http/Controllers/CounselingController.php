@@ -22,49 +22,74 @@ class CounselingController extends Controller
     * 申し込みフォームを表示する
     *
     * @param Request $request
-    * @return void
+    * @return mixed
     */
     public function showApplicationModal(Request $request)
     {
-        $params = [
-            'view' => json_encode($this->counseling_payloads->getModalConstitution()),
-            'trigger_id' => $request->trigger_id
-        ];
-
-        $this->slack_client->viewsOpen($params);
-        response('', 200)->send();
+        try {
+            $response = $this->slack_client->viewsOpen([
+                'trigger_id' => $request->trigger_id,
+                'view' => json_encode($this->counseling_payloads->getModalConstitution())
+            ]);
+            response('', 200)->send();
+            return $response;
+        } catch (\Throwable $th) {
+            Log::info($th);
+            $response = $this->slack_client->chatPostMessage([
+                'channel' => $request->user_id,
+                'text' => ':warning: エラーが発生し、フォームを表示できませんでした。もう一度お試しください。'
+            ]);
+            return false;
+        }
     }
 
     /**
     * メンターさんに申し込み内容を送信する
     *
     * @param array $payload
-    * @return void
+    * @return mixed
     */
     public function notifyToMentor($payload)
     {
-        $this->slack_client->chatPostMessage([
-            'channel' => config('const.slack_id.mentor_channel'),
-            'blocks' => json_encode($this->counseling_payloads->getCompletedApplyBlockConstitution($payload))
-        ]);
+        try {
+            $response = [];
+            $response[] = $this->slack_client->chatPostMessage([
+                'channel' => config('const.slack_id.mentor_channel'),
+                'blocks' => json_encode($this->counseling_payloads->getCompletedApplyBlockConstitution($payload))
+            ]);
 
-        $this->slack_client->chatPostMessage([
-            'channel' => $payload['user']['id'],
-            'blocks' => json_encode($this->counseling_payloads->getNotifyApplyBlockConstitution($payload))
-        ]);
-
-        response('', 200)->send();
+            $response[] = $this->slack_client->chatPostMessage([
+                'channel' => $payload['user']['id'],
+                'blocks' => json_encode($this->counseling_payloads->getNotifyApplyBlockConstitution($payload))
+            ]);
+            return $response;
+        } catch (\Throwable $th) {
+            Log::info($th);
+            $this->slack_client->chatPostMessage([
+                'channel' => $payload['user']['id'],
+                'text' => ':warning: エラーが発生し、申し込みを完了できませんでした。もう一度お試しください。'
+            ]);
+            return false;
+        }
     }
 
 
     /**
      * 相談会申し込みフォームを紹介するメッセージを送信する
+     *
+     * @return mixed
      */
     public function introduceQuestionForm()
     {
-        $this->slack_client->chatPostMessage([
-            'channel' => config('const.slack_id.general'),
-            'blocks' => json_encode($this->counseling_payloads->getIntroduceBlockConstitution())
-        ]);
+        try {
+            $response = $this->slack_client->chatPostMessage([
+                'channel' => config('const.slack_id.general'),
+                'blocks' => json_encode($this->counseling_payloads->getIntroduceBlockConstitution())
+            ]);
+            return $response;
+        } catch (\Throwable $th) {
+            Log::info($th);
+            return false;
+        }
     }
 }
