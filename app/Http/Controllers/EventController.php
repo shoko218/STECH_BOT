@@ -25,7 +25,7 @@ class EventController extends Controller
      * イベント作成フォームを表示する
      *
      * @param Request $request
-     * @return array
+     * @return mixed
      * @todo slack-php-apiを利用してこの処理を行いたいのですが、slack-php-apiからこの処理を行うとモーダルのjsonが長すぎてエラーになってしまいます。
      * slack-php-apiが改善されるか、モーダルでtimepickerが利用できるようになった場合、slack-php-apiで送信できないか試してみてください。
      */
@@ -40,6 +40,7 @@ class EventController extends Controller
             ];
 
             $client = new Client();
+
             $response = $client->request(
                 'POST',
                 'https://slack.com/api/views.open',
@@ -51,8 +52,17 @@ class EventController extends Controller
                     'json' => $params
                 ]
             );
+
+            return $response;
         } catch (\Throwable $th) {
             Log::info($th);
+
+            $this->slack_client->chatPostMessage([
+                'channel' => $request->user_id,
+                'text' => ':warning: エラーが発生し、イベントを登録できませんでした。もう一度お試しください。'
+            ]);
+
+            return false;
         }
     }
 
@@ -60,7 +70,7 @@ class EventController extends Controller
      * イベントをDBに登録する
      *
      * @param array $payload
-     * @return void
+     * @return mixed
      * @todo スマホから年を入れると和暦表示になるのですが、なぜか和暦の値がそのまま渡ってくる(2021年の場合、令和3年なので年月日が'0003-m-d'で渡ってきます)ので、
      * 渡ってきた年に+2018した年が今年から100年以内だった場合は和暦で渡ってきているとみなし、+2018して処理を進めます。
      * この仕様が改善された場合は以下3行の処理は削除してください。また、年号が変わった場合は新しい年号が始まった年-1で処理を書き換えてください。
@@ -107,8 +117,9 @@ class EventController extends Controller
                 response('', 200)->send();//3秒以内にレスポンスを返さないとタイムアウト扱いになるので、バリデーションが済んだらすぐにレスポンスを返す
             } else {//バリデーションエラーがあれば
                 $errors["response_action"] = "errors";
-                response()->json($errors)->send();//エラーの箇所とともにエラーレスポンスを返す
-                return;//処理を終了
+                $response = response()->json($errors);
+                $response->send();
+                return $response;//エラーの箇所とともにエラーレスポンスを返し、処理を終了
             }
 
             $event = Event::create([
@@ -120,14 +131,22 @@ class EventController extends Controller
             ]);
             DB::commit();
 
-            $this->slack_client->chatPostMessage([
+            $response = $this->slack_client->chatPostMessage([
                 'channel' => $payload['user']['id'],
                 'blocks' => json_encode($this->event_payloads->getCreatedEventMessageBlockConstitution($event))
             ]);
+
+            return $response;
         } catch (\Throwable $th) {
             DB::rollBack();
             Log::info($th);
-            response('エラーが発生し、イベントを登録できませんでした。もう一度お試しください。', 200)->send();
+
+            $this->slack_client->chatPostMessage([
+                'channel' => $payload['user']['id'],
+                'text' => ':warning: エラーが発生し、イベントを登録できませんでした。もう一度お試しください。'
+            ]);
+
+            return false;
         }
     }
 
@@ -135,25 +154,29 @@ class EventController extends Controller
      * イベントを削除する
      *
      * @param array $payload
-     * @return void
+     * @return mixed
      */
     public function deleteEvent($payload)
     {
+        response('', 200)->send();
+
         DB::beginTransaction();
         try {
             $event = Event::find($payload['actions'][0]['value']);
 
             $event_name = $event->name;
 
+            $response = [];
+
             if ($event->notice_ts != null) {//既にお知らせしていればお知らせ投稿を削除
-                $this->slack_client->chatDelete([
+                $response['delete_notice_post'] = $this->slack_client->chatDelete([
                     'channel' => config('const.slack_id.general'),
                     'ts' => $event->notice_ts,
                 ]);
             }
 
             if ($event->remind_ts != null) {//既にリマインドしていればリマインド投稿を削除
-                $this->slack_client->chatDelete([
+                $response['delete_remind_post'] = $this->slack_client->chatDelete([
                     'channel' => config('const.slack_id.general'),
                     'ts' => $event->remind_ts,
                 ]);
@@ -161,16 +184,23 @@ class EventController extends Controller
 
             $event->delete();
 
-            $this->slack_client->chatPostMessage([
+            DB::commit();
+
+            $response['post_msg'] = $this->slack_client->chatPostMessage([
                 'channel' => $payload['user']['id'],
                 'text' => "イベント *{$event_name}* を削除しました。"
             ]);
-
-            DB::commit();
+            return $response;
         } catch (\Throwable $th) {
             DB::rollBack();
             Log::info($th);
-            response('エラーが発生し、イベントを削除できませんでした。もう一度お試しください。', 200)->send();
+
+            $this->slack_client->chatPostMessage([
+                'channel' => $payload['user']['id'],
+                'text' => ':warning: エラーが発生し、イベントを削除できませんでした。もう一度お試しください。'
+            ]);
+
+            return false;
         }
     }
 
@@ -178,7 +208,7 @@ class EventController extends Controller
      * イベントを表示する
      *
      * @param Request $request
-     * @return void
+     * @return mixed
      * @todo この機能はそのうちwebアプリ等、別手段に移行したいと考えています。
      */
     public function showEvents(Request $request)
@@ -186,7 +216,8 @@ class EventController extends Controller
         response('', 200)->send();
 
         try {
-            $this->slack_client->chatPostMessage([
+            $response = [];
+            $response['header'] = $this->slack_client->chatPostMessage([
                 'channel' => $request->user_id,
                 'blocks' => json_encode($this->event_payloads->getShowHeaderBlockConstitution()),
             ]);
@@ -202,26 +233,35 @@ class EventController extends Controller
 
             if (!$events->isEmpty()) {
                 foreach ($events as $event) {
-                    $this->slack_client->chatPostMessage([
+                    $response['contents'][] = $this->slack_client->chatPostMessage([
                         'channel' => $request->user_id,
                         'blocks' => json_encode($this->event_payloads->getShowEventBlockConstitution($event)),
                     ]);
                 }
             } else {
-                $this->slack_client->chatPostMessage([
+                $response['contents'][] = $this->slack_client->chatPostMessage([
                     'channel' => $request->user_id,
                     'text' => "開催予定のイベントはありません。",
                 ]);
             }
+
+            return $response;
         } catch (\Throwable $th) {
             Log::info($th);
+
+            $this->slack_client->chatPostMessage([
+                'channel' => $request->user_id,
+                'text' => ':warning: エラーが発生し、イベントを表示できませんでした。もう一度お試しください。'
+            ]);
+
+            return false;
         }
     }
 
     /**
      * 開催予定のイベントを知らせる
      *
-     * @return void
+     * @return mixed
      */
     public function noticeEvent()
     {
@@ -246,23 +286,29 @@ class EventController extends Controller
                 })
                 ->get();
 
+            $response = [];
+
             foreach ($notice_events as $event) {
-                $chat = $this->slack_client->chatPostMessage([
+                $tmp_response = $this->slack_client->chatPostMessage([
                     'channel' => config('const.slack_id.general'),
                     'blocks' => json_encode($this->event_payloads->getNoticeEventBlocks($event)),
                 ]);
-                $event->notice_ts = $chat->getTs();
+
+                $event->notice_ts = $tmp_response->getTs();
                 $event->save();
+                $response[] = $tmp_response;
             }
+            return $response;
         } catch (\Throwable $th) {
             Log::info($th);
+            return false;
         }
     }
 
     /**
      * 午前10時に今日開催するイベントをリマインドする
      *
-     * @return void
+     * @return mixed
      */
     public function remindEvent()
     {
@@ -270,23 +316,30 @@ class EventController extends Controller
             $today_held_events = Event::whereDate('event_datetime', '=', date('Y-m-d'))//今日開催のイベント
                 ->whereNull('remind_ts')//まだリマインドしていないもの
                 ->get();
+
+            $response = [];
+
             foreach ($today_held_events as $event) {
-                $chat = $this->slack_client->chatPostMessage([
+                $tmp_response = $this->slack_client->chatPostMessage([
                     'channel' => config('const.slack_id.general'),
                     'blocks' => json_encode($this->event_payloads->getRemindEventBlocks($event)),
                 ]);
-                $event->remind_ts = $chat->getTs();
+
+                $event->remind_ts = $tmp_response->getTs();
                 $event->save();
+                $response[] = $tmp_response;
             }
+            return $response;
         } catch (\Throwable $th) {
             Log::info($th);
+            return false;
         }
     }
 
     /**
      * 15分後に始まるイベントのURLを共有する
      *
-     * @return void
+     * @return mixed
      */
     public function shareEventUrl()
     {
@@ -296,16 +349,20 @@ class EventController extends Controller
             $coming_soon_events = Event::whereDate('event_datetime', $start_time->format('Y-m-d'))
                 ->whereTime('event_datetime', $start_time
                 ->format('H:i:').'00')
-                ->get();//15分後に始まるイベントを取得
+                ->get();//15分後に始まるイベントを取得^
+
+            $response = [];
 
             foreach ($coming_soon_events as $event) {
-                $this->slack_client->chatPostMessage([
+                $response[] = $this->slack_client->chatPostMessage([
                     'channel' => config('const.slack_id.general'),
                     'blocks' => json_encode($this->event_payloads->getShareEventUrlBlocks($event)),
                 ]);
             }
+            return $response;
         } catch (\Throwable $th) {
             Log::info($th);
+            return false;
         }
     }
 
@@ -313,13 +370,14 @@ class EventController extends Controller
      * イベントに関する投稿の参加者情報を更新する
      *
      * @param Event $event
-     * @return void
+     * @return mixed
      */
     public function updateEventPosts(Event $event)
     {
         try {
+            $response = [];
             if ($event->notice_ts != null) {//既にお知らせしていればお知らせ投稿を更新
-                $this->slack_client->chatUpdate([
+                $response['notice'] = $this->slack_client->chatUpdate([
                     'channel' => config('const.slack_id.general'),
                     'ts' => $event->notice_ts,
                     'blocks' => json_encode($this->event_payloads->getNoticeEventBlocks($event)),
@@ -327,14 +385,17 @@ class EventController extends Controller
             }
 
             if ($event->remind_ts != null) {//既にリマインドしていればリマインド投稿を更新
-                $this->slack_client->chatUpdate([
+                $response['remind'] = $this->slack_client->chatUpdate([
                     'channel' => config('const.slack_id.general'),
                     'ts' => $event->remind_ts,
                     'blocks' => json_encode($this->event_payloads->getRemindEventBlocks($event)),
                 ]);
             }
+
+            return $response;
         } catch (\Throwable $th) {
             Log::info($th);
+            return false;
         }
     }
 }

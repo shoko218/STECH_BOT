@@ -22,7 +22,7 @@ class EventParticipantController extends Controller
      * イベントの参加者を登録する
      *
      * @param array $payload
-     * @return void
+     * @return boolean
      */
     public function create($payload)
     {
@@ -41,9 +41,12 @@ class EventParticipantController extends Controller
             app()->make('App\Http\Controllers\EventController')->updateEventPosts($event);
 
             DB::commit();
+
+            return true;
         } catch (\Throwable $th) {
             Log::info($th);
             DB::rollBack();
+            return false;
         }
     }
 
@@ -51,7 +54,7 @@ class EventParticipantController extends Controller
      * イベントの参加者を削除する
      *
      * @param array $payload
-     * @return void
+     * @return boolean
      */
     public function remove($payload)
     {
@@ -70,9 +73,12 @@ class EventParticipantController extends Controller
             app()->make('App\Http\Controllers\EventController')->updateEventPosts($event);
 
             DB::commit();
+
+            return true;
         } catch (\Throwable $th) {
             Log::info($th);
             DB::rollBack();
+            return false;
         }
     }
 }
