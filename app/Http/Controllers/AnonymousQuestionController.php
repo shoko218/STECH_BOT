@@ -10,7 +10,7 @@ use JoliCode\Slack\Exception\SlackErrorResponse;
 class AnonymousQuestionController extends Controller
 {
     private $slack_client;
-        
+
     public function __construct($generated_slack_client = null)
     {
         if (is_null($generated_slack_client)) {
@@ -19,7 +19,7 @@ class AnonymousQuestionController extends Controller
             $this->slack_client = $generated_slack_client;
         }
     }
-    
+
    /**
     * /ask-questionのコマンドの応答としてモーダルを表示
     *
@@ -28,7 +28,7 @@ class AnonymousQuestionController extends Controller
     public function openQuestionForm (Request $request) 
     {
         response('', 200)->send();
-        
+
         try {
             $query_params = [
                 'view' => json_encode(app()->make('App\Http\Controllers\BlockPayloads\AnonymousQuestionPayloadController')->createQuestionFormView()),
@@ -56,7 +56,7 @@ class AnonymousQuestionController extends Controller
             $user_inputs = $payload['view']['state']['values'];
             $mentor_number = intval($user_inputs['mentors-block']['mentor']['selected_option']['value']);
             $question_sentence = $user_inputs['question-block']['question']['value'];    
-            
+
             $mention = $mentor_number == 6 ? ' 全体へ' : config("const.slack_id.mentors")[$mentor_number];
             $this->slack_client->chatPostMessage([
                 'channel' => config('const.slack_id.question_channel'),
@@ -93,9 +93,7 @@ class AnonymousQuestionController extends Controller
             Log::info($e->getMessage());
             return false;
         }
-    }
-
-   /**
+    }/**
     * 匿名質問フォームを紹介するメッセージを送る
     */
     public function introduceQuestionForm ()
@@ -113,4 +111,4 @@ class AnonymousQuestionController extends Controller
             return false;
         }
     }
-}
+} 

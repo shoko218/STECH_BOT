@@ -22,8 +22,7 @@ class AnonymousQuestionPayloadController extends Controller
                     "text" => ":white_check_mark: 匿名質問ができる「/ask-questions」コマンドのご紹介",
                     "emoji" => true
                 ]
-            ],
-            [
+            ],[
                 "type" => "section",
                 "text" => [
                     "type" => "mrkdwn",
