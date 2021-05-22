@@ -15,6 +15,10 @@ class Kernel extends ConsoleKernel
      */
     protected $commands = [
         Commands\IntroduceCounselingForm::class,
+        Commands\IntroduceQuestionForm::class,
+        Commands\NoticeEvent::class,
+        Commands\RemindEvent::class,
+        Commands\ShareEventUrl::class,
     ];
 
     /**
@@ -26,6 +30,10 @@ class Kernel extends ConsoleKernel
     protected function schedule(Schedule $schedule)
     {
         $schedule->command('counseling:introduce_form')->weeklyOn(1, '18:00');
+        $schedule->command('question:introduce')->weeklyOn(1, '18:00');
+        $schedule->command('event:notice')->everyFifteenMinutes();
+        $schedule->command('event:remind')->dailyAt('10:00');
+        $schedule->command('event:share_url')->everyFifteenMinutes();
     }
 
     /**
