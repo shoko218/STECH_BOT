@@ -9,7 +9,7 @@ use InvalidArgumentException;
 use Mockery;
 use Tests\TestCase;
 
-class CounelingTest extends TestCase
+class CounselingTest extends TestCase
 {
     use WithFaker;
     use RefreshDatabase;
