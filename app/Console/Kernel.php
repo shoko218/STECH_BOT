@@ -13,7 +13,9 @@ class Kernel extends ConsoleKernel
      * @var array
      */
     protected $commands = [
-        //
+        Commands\NoticeEvent::class,
+        Commands\RemindEvent::class,
+        Commands\ShareEventUrl::class,
     ];
 
     /**
@@ -24,8 +26,9 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule)
     {
-        // $schedule->command('inspire')
-        //          ->hourly();
+        $schedule->command('event:notice')->everyFifteenMinutes();
+        $schedule->command('event:remind')->dailyAt('10:00');
+        $schedule->command('event:share_url')->everyFifteenMinutes();
     }
 
     /**
