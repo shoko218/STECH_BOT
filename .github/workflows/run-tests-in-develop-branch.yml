@@ -34,4 +34,5 @@ jobs:
         DB_TEST_DATABASE: test
         DB_TEST_USERNAME: root
         DB_TEST_PASSWORD: root
+        SLACK_TOKEN: sample
       run: vendor/bin/phpunit
