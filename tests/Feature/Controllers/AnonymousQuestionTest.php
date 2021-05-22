@@ -24,15 +24,6 @@ class AnonymousQuestionTest extends TestCase
     }
 
     /**
-     * ルート"/slash/ask_questions"のテスト
-     */
-    public function testAskQuestionsRoute ()
-    {
-        $response = $this->json('POST', '/slash/ask_questions', ['trigger_id'=>'12345.98765.abcd2358fdea']);
-        $response->assertStatus(200);
-    }
-
-    /**
      * SlackClientFactoryのモックを作り、Clientオブジェクトを返す
      * 
      * @return object
@@ -45,6 +36,34 @@ class AnonymousQuestionTest extends TestCase
                         ->andReturn(new JoliCode\Slack\Api\Client);
     
         return JoliCode\Slack\ClientFactory::create('dummy token');
+    }
+
+    /**
+     * ルート"/slash/ask_questions"のテスト
+     * 
+     * @runInSeparateProcess
+     * @preserveGlobalState disabled
+     */
+    public function testAskQuestionsRoute ()
+    {
+        $api_mock = Mockery::mock('overload:'.JoliCode\Slack\Api\Client::class);
+        $api_mock->shouldReceive('viewsOpen')
+            ->with(Mockery::any())
+            ->andReturn(true);
+
+        $slack_client_mock = $this->provideSlackClientMock();
+
+        $anonymous_question_controller = Mockery::mock(
+            'App\Http\Controllers\AnonymousQuestionController[openQuestionForm]', 
+            [$slack_client_mock]
+        );
+
+        $anonymous_question_controller->shouldReceive('openQuestionForm')
+                            ->with(Mockery::any())
+                            ->andReturn(http_response_code( 200 ));
+
+        $response = $this->json('POST', '/slash/ask_questions', ['trigger_id'=>'12345.98765.abcd2358fdea']);
+        $response->assertStatus(200);
     }
 
     /**
