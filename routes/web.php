@@ -18,6 +18,7 @@ Route::get('/', function () {
 Route::post('/interactive_endpoint', 'InteractiveEndpointController');
 
 Route::prefix('/slash')->group(function () {
+    Route::post('/show_application_counseling_modal', 'CounselingController@showApplicationModal');
     Route::post('/ask_questions', 'AnonymousQuestionController@openQuestionForm');
     Route::group(['middleware' => 'check.admin'], function () {
         Route::post('/show_create_event_modal', 'EventController@showCreateEventModal');

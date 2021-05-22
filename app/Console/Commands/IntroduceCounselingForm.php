@@ -5,21 +5,21 @@ namespace App\Console\Commands;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 
-class RemindEvent extends Command
+class IntroduceCounselingForm extends Command
 {
     /**
      * The name and signature of the console command.
      *
      * @var string
      */
-    protected $signature = 'event:remind';
+    protected $signature = 'counseling:introduce_form';
 
     /**
      * The console command description.
      *
      * @var string
      */
-    protected $description = 'This command reminds events.';
+    protected $description = 'This command introduces counseling form.';
 
     /**
      * Create a new command instance.
@@ -38,6 +38,6 @@ class RemindEvent extends Command
      */
     public function handle()
     {
-        app()->make('App\Http\Controllers\EventController')->remindEvent();
+        app()->make('App\Http\Controllers\CounselingController')->introduceQuestionForm();
     }
 }

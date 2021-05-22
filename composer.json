@@ -10,12 +10,9 @@
     "require": {
         "php": "^7.2.5|^8.0",
         "fideloper/proxy": "^4.4",
-        "guzzlehttp/guzzle": "^7.2",
-        "jolicode/slack-php-api": "^4.1",
         "laravel/framework": "^6.20",
         "laravel/tinker": "^2.5",
-        "nyholm/psr7": "^1.4",
-        "symfony/http-client": "^5.2"
+        "vluzrmos/slack-api": "^0.5.0"
     },
     "require-dev": {
         "facade/ignition": "^1.16.4",

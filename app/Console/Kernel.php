@@ -2,6 +2,7 @@
 
 namespace App\Console;
 
+use App\Console\Commands\IntroduceCounselingForm;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
 
@@ -13,6 +14,7 @@ class Kernel extends ConsoleKernel
      * @var array
      */
     protected $commands = [
+        Commands\IntroduceCounselingForm::class,
         Commands\IntroduceQuestionForm::class,
         Commands\NoticeEvent::class,
         Commands\RemindEvent::class,
@@ -27,6 +29,7 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule)
     {
+        $schedule->command('counseling:introduce_form')->weeklyOn(1, '18:00');
         $schedule->command('question:introduce')->weeklyOn(1, '18:00');
         $schedule->command('event:notice')->everyFifteenMinutes();
         $schedule->command('event:remind')->dailyAt('10:00');
