@@ -1,6 +1,6 @@
 <?php
 
-namespace Tests\Feature\Controller;
+namespace Tests\Feature\Controllers;
 
 use DateTime;
 use Illuminate\Foundation\Testing\RefreshDatabase;
