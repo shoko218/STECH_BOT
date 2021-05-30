@@ -641,6 +641,7 @@ class EventPayloadController extends Controller
                         "emoji" => true
                     ],
                     "value" => "$event->id",
+                    "action_id" => "delete_event",
                     "style" => "danger",
                     "confirm" => [
                         "title" => [
