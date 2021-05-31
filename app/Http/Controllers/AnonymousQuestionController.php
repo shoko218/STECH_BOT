@@ -37,7 +37,6 @@ class AnonymousQuestionController extends Controller
 
             $this->slack_client->viewsOpen($query_params);
 
-            return 'ok';
         } catch (SlackErrorResponse $e) {
             Log::info($e->getMessage());
             return 'error';
@@ -87,8 +86,6 @@ class AnonymousQuestionController extends Controller
                 ])
             ]);
 
-            return true;
-
         } catch (SlackErrorResponse $e) {
             Log::info($e->getMessage());
             return false;
@@ -103,8 +100,6 @@ class AnonymousQuestionController extends Controller
                 'channel' => config('const.slack_id.question_channel'),
                 'blocks' => json_encode(app()->make('App\Http\Controllers\BlockPayloads\AnonymousQuestionPayloadController')->createQuestionFormIntroductionBlocks())
             ]);
-
-            return true;
 
         } catch (SlackErrorResponse $e) {
             Log::info($e->getMessage());

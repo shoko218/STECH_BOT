@@ -89,10 +89,7 @@ class AnonymousQuestionTest extends TestCase
         $dummy_request = new Request();
         $dummy_request->replace(['trigger_id'=>'12345.98765.abcd2358fdea']);
 
-        $this->assertEquals(
-            'ok', 
-            $anonymous_question_controller->openQuestionForm($dummy_request)
-        );
+        $anonymous_question_controller->openQuestionForm($dummy_request);
     }
 
     /**
@@ -151,7 +148,7 @@ class AnonymousQuestionTest extends TestCase
         $slack_client_mock = $this->provideSlackClientMock();
         $anonymous_question_controller = new AnonymousQuestionController($slack_client_mock);
 
-        $this->assertTrue($anonymous_question_controller->sendQuestionToChannel($dummy_payload));
+        $anonymous_question_controller->sendQuestionToChannel($dummy_payload);
     }
 
     /**
@@ -203,7 +200,7 @@ class AnonymousQuestionTest extends TestCase
         $slack_client_mock = $this->provideSlackClientMock();
         $anonymous_question_controller = new AnonymousQuestionController($slack_client_mock);
 
-        $this->assertTrue($anonymous_question_controller->introduceQuestionForm());
+        $anonymous_question_controller->introduceQuestionForm();
     }
 
     /**
