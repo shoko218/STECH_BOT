@@ -56,8 +56,7 @@ class MeetingTest extends TestCase
         $slack_client_mock = JoliCode\Slack\ClientFactory::create('dummy token');
         
         $meeting = new MeetingController($slack_client_mock);
-
-        $this->assertTrue($meeting->AskToHoldMeeting());
+        $meeting->AskToHoldMeeting();
     }
 
     /**
@@ -91,9 +90,7 @@ class MeetingTest extends TestCase
         $this->expectExceptionMessage('Slack returned error code');
 
         $meeting_controller = $this->createMeetingControllerCausesError();
-        
-        $response = $meeting_controller->AskToHoldMeeting();
-        $this->assertFalse($response);
+        $meeting_controller->AskToHoldMeeting();
     }
 
     /**
@@ -166,9 +163,7 @@ class MeetingTest extends TestCase
         $this->expectExceptionMessage('Slack returned error code');
 
         $meeting_controller = $this->createMeetingControllerCausesError();
-        
-        $response = $meeting_controller->scheduleMeetings(['both_meetings', 1621213200, 1621472400]);
-        $this->assertFalse($response);
+        $meeting_controller->scheduleMeetings(['both_meetings', 1621213200, 1621472400]);
     }
 
     /**
@@ -223,6 +218,7 @@ class MeetingTest extends TestCase
      * 
      * @runInSeparateProcess
      * @preserveGlobalState disabled
+     * @doesNotPerformAssertions
      */
     public function testErrorGetScheduledMeetingList()
     {
@@ -234,8 +230,7 @@ class MeetingTest extends TestCase
         $guzzle_mock = new Client(['handler' => $handler_stack]);
 
         $meeting = new MeetingController(null, $guzzle_mock);
-
-        $this->assertEquals('invalid argument exception', $meeting->getScheduledMeetingList());
+        $meeting->getScheduledMeetingList();
     }
 
     /**
@@ -310,9 +305,7 @@ class MeetingTest extends TestCase
         $this->expectExceptionMessage('Slack returned error code');
 
         $meeting_controller = $this->createMeetingControllerCausesError();
-
-        $response = $meeting_controller->deleteOverlappedMeeting(0000000000, 0000000000);
-        $this->assertFalse($response);
+        $meeting_controller->deleteOverlappedMeeting(0000000000, 0000000000);
     }
 
 
@@ -453,8 +446,7 @@ class MeetingTest extends TestCase
         ];
 
         $meeting_controller_mock = $this->provideMeetingControllerMocks($next_meetings, false);
-
-        $this->assertTrue($meeting_controller_mock->notifyMeetingSettingsCompletion($dummy_payload));
+        $meeting_controller_mock->notifyMeetingSettingsCompletion($dummy_payload);
     }
 
     /**
@@ -478,9 +470,7 @@ class MeetingTest extends TestCase
         $this->expectExceptionMessage('Slack returned error code');
 
         $meeting_controller = $this->createMeetingControllerCausesError();
-
-        $response = $meeting_controller>notifyMeetingSettingsCompletion($dummy_payload);
-        $this->assertFalse($response);
+        $meeting_controller>notifyMeetingSettingsCompletion($dummy_payload);
     }
 
 
@@ -504,9 +494,7 @@ class MeetingTest extends TestCase
         $this->expectExceptionMessage('Slack returned error code');
 
         $meeting_controller = $this->createMeetingControllerCausesError();
-
-        $response = $meeting_controller>notifyMeetingSettingsCompletion($dummy_payload);
-        $this->assertFalse($response);
+        $meeting_controller>notifyMeetingSettingsCompletion($dummy_payload);
     }
 
 }

@@ -43,11 +43,8 @@ class MeetingController extends Controller
                 'blocks' => json_encode(app()->make('App\Http\Controllers\BlockPayloads\MeetingPayloadController')->createMeetingConfirmationMessageBlocks())
             ]);
 
-            return true;
-
         } catch (SlackErrorResponse $e) {
             echo $e->getMessage();
-            return false;
         }
     }
 
@@ -115,7 +112,6 @@ class MeetingController extends Controller
 
         } catch (SlackErrorResponse $e) {
             echo $e->getMessage();
-            return false;
         }
     }
 
@@ -145,7 +141,6 @@ class MeetingController extends Controller
 
         } catch (SlackErrorResponse $e) {
             echo $e->getMessage();
-            return false;
         }
     }
 
@@ -170,11 +165,9 @@ class MeetingController extends Controller
 
         } catch (\InvalidArgumentException $e) {
             Log::info($e->getMessage());
-            return 'invalid argument exception';
             
         } catch (\Throwable $th) {
             Log::info($th);
-            return false;
         }
     }
 
@@ -209,8 +202,6 @@ class MeetingController extends Controller
                     'text' => '次回ミーティングはパスされました！'
                 ]);
 
-                return true;
-
             } else {
                 $next_meetings = $this->getScheduledMeetingList();
                 $next_meeting_date_list = array();
@@ -240,8 +231,6 @@ class MeetingController extends Controller
                 'channel' => config('const.slack_id.administrator'),
                 'text' => 'ミーティングの設定は正常に行われませんでした。'
             ]);
-
-            return false;
         }
     }
 
