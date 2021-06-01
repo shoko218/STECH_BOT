@@ -32,7 +32,7 @@ class MeetingTest extends TestCase
     }
 
     /**
-     * MeetingController@AskToHoldMeeting()の正常処理テスト
+     * MeetingController@AskToHoldMeetingの正常処理テスト
      *
      * @runInSeparateProcess
      * @preserveGlobalState disabled
@@ -67,30 +67,38 @@ class MeetingTest extends TestCase
      */
     public function createMeetingControllerCausesError ()
     {
-        $client_factory_error_mock = Mockery::mock('overload:JoliCode\Slack\ClientFactory'); 
-        $client_factory_error_mock->shouldReceive('chatPostMessage')->once()->andReturn('')
-                    ->shouldReceive('create')->once()
-                    ->andThrow(new SlackErrorResponse('Slack returned error code'))
-                    ->getMock();
+        $api_error_mock = Mockery::mock('overload:'. JoliCode\Slack\Api\Client::class);
+        
+        $api_error_mock->shouldReceive('chatPostMessage')
+            ->andThrow(new SlackErrorResponse('dummy exception: chatPostMessage'))
+            ->getMock();
+        $api_error_mock->shouldReceive('chatScheduleMessage')
+            ->andThrow(new SlackErrorResponse('dummy exception: chatScheduleMessage'))
+            ->getMock();
 
-        return new MeetingController();
+        $client_factory_mock = Mockery::mock('alias:'. JoliCode\Slack\ClientFactory::class);
+        $client_factory_mock->shouldReceive('create')
+                        ->with('dummy token')
+                        ->andReturn(new JoliCode\Slack\Api\Client);
+        
+        $slack_client_error_mock = JoliCode\Slack\ClientFactory::create('dummy token');
+
+        return new MeetingController($slack_client_error_mock);
     }
 
     /**
-     * MeetingController@AskToHoldMeeting()の例外処理テスト
+     * MeetingController@AskToHoldMeetingの例外処理テスト
      * 
      * api接続の失敗時に例外処理となる
+     * catch内で$e->getMessageをechoさせているので、その出力が期待通りになっているかをテストします
      *
      * @runInSeparateProcess
      * @preserveGlobalState disabled
      */
     public function testErrorAskToHoldMeeting()
     {
-        $this->expectException(SlackErrorResponse::class);
-        $this->expectExceptionMessage('Slack returned error code');
-
-        $meeting_controller = $this->createMeetingControllerCausesError();
-        $meeting_controller->AskToHoldMeeting();
+        $this->createMeetingControllerCausesError()->askToHoldMeeting();
+        $this->expectOutputString('Slack returned error code "dummy exception: chatPostMessage"');
     }
 
     /**
@@ -159,11 +167,8 @@ class MeetingTest extends TestCase
      */
     public function testErrorScheduleMeetings()
     {
-        $this->expectException(SlackErrorResponse::class);
-        $this->expectExceptionMessage('Slack returned error code');
-
-        $meeting_controller = $this->createMeetingControllerCausesError();
-        $meeting_controller->scheduleMeetings(['both_meetings', 1621213200, 1621472400]);
+        $this->createMeetingControllerCausesError()->scheduleMeetings(['both_meetings', 1621213200, 1621472400]);
+        $this->expectOutputString('Slack returned error code "dummy exception: chatScheduleMessage"');
     }
 
     /**
@@ -218,23 +223,24 @@ class MeetingTest extends TestCase
      * 
      * @runInSeparateProcess
      * @preserveGlobalState disabled
-     * @doesNotPerformAssertions
      */
     public function testErrorGetScheduledMeetingList()
     {
         $handler = new MockHandler([
-            new InvalidArgumentException('dummy exception'),
-            new InvalidArgumentException('dummy exeption')
+            new InvalidArgumentException('dummy guzzle exception'),
+            new InvalidArgumentException('dummy guzzle exception')
         ]);
         $handler_stack = HandlerStack::create($handler);
         $guzzle_mock = new Client(['handler' => $handler_stack]);
 
         $meeting = new MeetingController(null, $guzzle_mock);
         $meeting->getScheduledMeetingList();
+        
+        $this->expectOutputString('dummy guzzle exception');
     }
 
     /**
-     * MeetingController@deleteOverlappedMeeting()の正常処理テスト
+     * MeetingController@deleteOverlappedMeetingの正常処理テスト
      * 
      * @runInSeparateProcess
      * @preserveGlobalState disabled
@@ -291,9 +297,10 @@ class MeetingTest extends TestCase
     }
 
     /**
-     * MeetingController@deleteOverlappedMeeting()の例外処理テスト
+     * MeetingController@deleteOverlappedMeetingの例外処理テスト
      * 
-     * api接続失敗時に例外処理となる
+     * $deleted=[]で配列の数が0になり例外にならないため、
+     * メソッド内にあるgetScheduledMeetinglistがエラーを引き起こした場合を想定しています
      * 
      * @runInSeparateProcess
      * @preserveGlobalState disabled
@@ -301,11 +308,12 @@ class MeetingTest extends TestCase
      */
     public function testErrorDeleteOverlappedMeeting()
     {
-        $this->expectException(SlackErrorResponse::class);
-        $this->expectExceptionMessage('Slack returned error code');
+        $meeting_controller_mock = Mockery::mock('App\Http\Controllers\MeetingController[getScheduledMeetingList]', [null, null]);
+        $meeting_controller_mock->shouldReceive('getScheduledMeetingList')
+            ->andThrow(new InvalidArgumentException('dummy guzzle exception'));
 
-        $meeting_controller = $this->createMeetingControllerCausesError();
-        $meeting_controller->deleteOverlappedMeeting(0000000000, 0000000000);
+        $meeting_controller_mock->deleteOverlappedMeeting([0000000000, 0000000000]);
+        $this->expectOutputString('dummy guzzle exception');
     }
 
 
@@ -374,7 +382,7 @@ class MeetingTest extends TestCase
     }
 
     /**
-     * MeetingController@notifyMeetingSettingCompletion()の正常処理テスト1
+     * MeetingController@notifyMeetingSettingCompletionの正常処理テスト1
      * 
      * 
      * 月曜日・木曜日両日、月曜日のみ、木曜日のみに開催する場合を想定
@@ -426,7 +434,7 @@ class MeetingTest extends TestCase
     }
 
     /**
-     * MeetingController@notifyMeetingSettingCompletion()の正常処理テスト2
+     * MeetingController@notifyMeetingSettingCompletionの正常処理テスト2
      * 
      * 両日ともミーティングを開催しない場合
      * 
@@ -450,14 +458,12 @@ class MeetingTest extends TestCase
     }
 
     /**
-     * MeetingController@notifyMeetingSettingCompletion()の例外処理テスト1
+     * MeetingController@notifyMeetingSettingCompletionの例外処理テスト
      * 
-     * 月曜日・木曜日両日、月曜日のみ、木曜日のみに開催する場合
-     * Slack API関連でエラーが発生したときに例外処理
+     * chatScheduleMessageが失敗した場合を想定しています
      * 
      * @runInSeparateProcess
      * @preserveGlobalState disabled
-     * @dataProvider nextMeetingDataProvider
      */
     public function testErrorNotifyMeetingSettingcompletion_ExistsMeeting ()
     {
@@ -466,35 +472,7 @@ class MeetingTest extends TestCase
             "actions" => [["block_id" => "confirm_meeting","value" => "both_meetings"]]
         ];
 
-        $this->expectException(SlackErrorResponse::class);
-        $this->expectExceptionMessage('Slack returned error code');
-
-        $meeting_controller = $this->createMeetingControllerCausesError();
-        $meeting_controller>notifyMeetingSettingsCompletion($dummy_payload);
+        $this->createMeetingControllerCausesError()->notifyMeetingSettingsCompletion($dummy_payload);
+        $this->expectOutputString('Slack returned error code "dummy exception: chatScheduleMessage"');
     }
-
-
-    /**
-     * MeetingController@notifyMeetingSettingCompletion()の例外処理テスト2
-     * 
-     * 両日ともミーティングを開催しない場合
-     * Slack API関連でエラーが発生したときに例外処理
-     * 
-     * @runInSeparateProcess
-     * @preserveGlobalState disabled
-     */
-    public function testErrorNotifyMeetingSettingCompletion_NoMeeting ()
-    {
-        $dummy_payload = [
-            "type" => "block_actions",
-            "actions" => [["block_id" => "confirm_meeting","value" => "not_both_meetings"]]
-        ];
-
-        $this->expectException(SlackErrorResponse::class);
-        $this->expectExceptionMessage('Slack returned error code');
-
-        $meeting_controller = $this->createMeetingControllerCausesError();
-        $meeting_controller>notifyMeetingSettingsCompletion($dummy_payload);
-    }
-
 }

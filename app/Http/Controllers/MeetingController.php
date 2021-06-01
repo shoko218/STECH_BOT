@@ -44,7 +44,10 @@ class MeetingController extends Controller
             ]);
 
         } catch (SlackErrorResponse $e) {
-            echo $e->getMessage();
+            $error_message = $e->getMessage();
+
+            Log::info($error_message);
+            echo $error_message;
         }
     }
 
@@ -111,7 +114,10 @@ class MeetingController extends Controller
             }
 
         } catch (SlackErrorResponse $e) {
-            echo $e->getMessage();
+            $error_message = $e->getMessage();
+
+            Log::info($error_message);
+            echo $error_message;
         }
     }
 
@@ -139,8 +145,23 @@ class MeetingController extends Controller
 
             return $deleted;
 
+        } catch (\InvalidArgumentException $e) {
+            $error_message = $e->getMessage();
+
+            Log::info($error_message);
+            echo $error_message;
+
         } catch (SlackErrorResponse $e) {
-            echo $e->getMessage();
+            $error_message = $e->getMessage();
+
+            Log::info($error_message);
+            echo $error_message;
+
+        } catch (\Throwable $th) {
+            $error_message = $th->getMessage();
+
+            Log::info($error_message);
+            echo $error_message;
         }
     }
 
@@ -164,10 +185,16 @@ class MeetingController extends Controller
             return $scheduled_list['scheduled_messages'];
 
         } catch (\InvalidArgumentException $e) {
-            Log::info($e->getMessage());
+            $error_message = $e->getMessage();
+
+            Log::info($error_message);
+            echo $error_message;
             
         } catch (\Throwable $th) {
-            Log::info($th);
+            $error_message = $th->getMessage();
+
+            Log::info($error_message);
+            echo $error_message;
         }
     }
 
@@ -180,6 +207,7 @@ class MeetingController extends Controller
     *
     * @param $payload json_decodeされたペイロード。InteractiveEndpointControllerから受け取る。
     * @var $scheduling_result scheduleMeetingsの結果(true|false)を受け取る変数。falseの場合は別途メッセージを送信
+    * @todo slack apiで例外が発生したとき、SlackErrorResponseで例外をキャッチしてGuzzleなど別方法でSlackにメッセージを送信する
     */
     public function notifyMeetingSettingsCompletion ($payload) 
     {
@@ -227,11 +255,13 @@ class MeetingController extends Controller
             
         } catch (\Throwable $th) {
             Log::info($th);
+            return $th->getMessage();
+
             $this->slack_client->chatPostMessage([
                 'channel' => config('const.slack_id.administrator'),
                 'text' => 'ミーティングの設定は正常に行われませんでした。'
-            ]);
+                ]);
+            }
         }
-    }
 
 }
