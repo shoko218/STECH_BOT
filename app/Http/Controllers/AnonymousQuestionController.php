@@ -38,8 +38,10 @@ class AnonymousQuestionController extends Controller
             $this->slack_client->viewsOpen($query_params);
 
         } catch (SlackErrorResponse $e) {
-            Log::info($e->getMessage());
-            return 'error';
+            $error_message = $e->getMessage();
+
+            Log::info($error_message);
+            echo $error_message;
         }
     }
 
@@ -87,10 +89,14 @@ class AnonymousQuestionController extends Controller
             ]);
 
         } catch (SlackErrorResponse $e) {
-            Log::info($e->getMessage());
-            return false;
+            $error_message = $e->getMessage();
+
+            Log::info($error_message);
+            echo $error_message;
         }
-    }/**
+    }
+    
+    /**
     * 匿名質問フォームを紹介するメッセージを送る
     */
     public function introduceQuestionForm ()
@@ -102,8 +108,10 @@ class AnonymousQuestionController extends Controller
             ]);
 
         } catch (SlackErrorResponse $e) {
-            Log::info($e->getMessage());
-            return false;
+            $error_message = $e->getMessage();
+
+            Log::info($error_message);
+            echo $error_message;
         }
     }
 } 

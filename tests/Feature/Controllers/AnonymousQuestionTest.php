@@ -114,10 +114,8 @@ class AnonymousQuestionTest extends TestCase
         $dummy_request = new Request();
         $dummy_request->replace(['trigger_id'=>'']);
 
-        $this->assertEquals(
-            'error',
-            $anonymous_question_controller->openQuestionForm($dummy_request)
-        );
+        $anonymous_question_controller->openQuestionForm($dummy_request); 
+        $this->expectOutputString('Slack returned error code "dummy exception: viewsOpen"'); 
     }
 
     /**
@@ -178,7 +176,8 @@ class AnonymousQuestionTest extends TestCase
         $slack_client_mock = $this->provideSlackClientMock();
         $anonymous_question_controller = new AnonymousQuestionController($slack_client_mock);
     
-        $this->assertFalse($anonymous_question_controller->sendQuestionToChannel($dummy_payload));
+        $anonymous_question_controller->sendQuestionToChannel($dummy_payload);
+        $this->expectOutputString('Slack returned error code "dummy exception: chatPostMessage"'); 
     }
 
     /**
@@ -221,6 +220,7 @@ class AnonymousQuestionTest extends TestCase
         $slack_client_mock = $this->provideSlackClientMock();
         $anonymous_question_controller = new AnonymousQuestionController($slack_client_mock);
 
-        $this->assertFalse($anonymous_question_controller->introduceQuestionForm());
+        $anonymous_question_controller->introduceQuestionForm();
+        $this->expectOutputString('Slack returned error code "dummy exception: chatPostMessage"'); 
     }
 }
