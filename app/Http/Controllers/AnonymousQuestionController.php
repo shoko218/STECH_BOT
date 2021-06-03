@@ -20,98 +20,113 @@ class AnonymousQuestionController extends Controller
         }
     }
 
-   /**
-    * /ask-questionのコマンドの応答としてモーダルを表示
-    *
-    * @param Request $request
-    */
+    /**
+     * slack apiのviewOspenを実行する
+     */
+    public function executeViewsOpen ($request)
+    {
+        $query_params = [
+            'view' => json_encode(app()->make('App\Http\Controllers\BlockPayloads\AnonymousQuestionPayloadController')->createQuestionFormView()),
+            'trigger_id' => $request->input('trigger_id')
+        ];
+
+        $this->slack_client->viewsOpen($query_params);
+    }
+
+    /**
+     * /ask-questionのコマンドの応答としてモーダルを表示
+     *
+     * @param Request $request
+     */
     public function openQuestionForm (Request $request) 
     {
-        response('', 200)->send();
-
+        response('', 200)->send(); 
+        
         try {
-            $query_params = [
-                'view' => json_encode(app()->make('App\Http\Controllers\BlockPayloads\AnonymousQuestionPayloadController')->createQuestionFormView()),
-                'trigger_id' => $request->input('trigger_id')
-            ];
-
-            $this->slack_client->viewsOpen($query_params);
+            $this->executeViewsOpen($request);
 
         } catch (SlackErrorResponse $e) {
-            $error_message = $e->getMessage();
-
-            Log::info($error_message);
-            echo $error_message;
+            Log::info($e->getMessage());
         }
     }
 
-   /**
-    * 受け付けた匿名質問をメッセージとして公開チャンネルに流す
-    * 
-    * @param Request $request
-    * @var string $mention メンション先を定義
-    */
+    /**
+     * sendQuestionToChannel()のapi接続部分
+     */
+    public function executeChatPostMessageOfQuestion ($payload)
+    {
+        $user_inputs = $payload['view']['state']['values'];
+        $mentor_number = intval($user_inputs['mentors-block']['mentor']['selected_option']['value']);
+        $question_sentence = $user_inputs['question-block']['question']['value'];    
+        $mention = $mentor_number == 6 ? ' 全体へ' : config("const.slack_id.mentors")[$mentor_number];
+        
+        $this->slack_client->chatPostMessage([
+            'channel' => config('const.slack_id.question_channel'),
+            'username' => '匿名の相談です',
+            'icon_url' => 'https://2.bp.blogspot.com/-VVtgu8RyEJo/VZ-QWqgI_wI/AAAAAAAAvKY/N-xnZvqeGYY/s800/girl_question.png',
+            'blocks' => json_encode([
+                [
+                    "type" => "section",
+                    "text" => [
+                        "type" => "mrkdwn",
+                        "text" => "<@$mention>",
+                    ]
+                ],
+                [
+                    "type" => "section",
+                    "text" => [
+                        "type" => "mrkdwn",
+                        "text" => "匿名の質問です！",
+                    ]
+                ],
+                [
+                    "type" => "section",
+                    "text" => [
+                        "type" => "mrkdwn",
+                        "text" => "\n[内容] \n$question_sentence",
+                    ]
+                ]
+            ])
+        ]);
+    }
+
+    /**
+     * 受け付けた匿名質問をメッセージとして公開チャンネルに流す
+     * 
+     * @param Request $request
+     * @var string $mention メンション先を定義
+     */
     public function sendQuestionToChannel ($payload)
     {
         try {
-            $user_inputs = $payload['view']['state']['values'];
-            $mentor_number = intval($user_inputs['mentors-block']['mentor']['selected_option']['value']);
-            $question_sentence = $user_inputs['question-block']['question']['value'];    
-
-            $mention = $mentor_number == 6 ? ' 全体へ' : config("const.slack_id.mentors")[$mentor_number];
-            $this->slack_client->chatPostMessage([
-                'channel' => config('const.slack_id.question_channel'),
-                'username' => '匿名の相談です',
-                'icon_url' => 'https://2.bp.blogspot.com/-VVtgu8RyEJo/VZ-QWqgI_wI/AAAAAAAAvKY/N-xnZvqeGYY/s800/girl_question.png',
-                'blocks' => json_encode([
-                    [
-                        "type" => "section",
-                        "text" => [
-                            "type" => "mrkdwn",
-                            "text" => "<@$mention>",
-                        ]
-                    ],
-                    [
-                        "type" => "section",
-                        "text" => [
-                            "type" => "mrkdwn",
-                            "text" => "匿名の質問です！",
-                        ]
-                    ],
-                    [
-                        "type" => "section",
-                        "text" => [
-                            "type" => "mrkdwn",
-                            "text" => "\n[内容] \n$question_sentence",
-                        ]
-                    ]
-                ])
-            ]);
+            $this->executeChatPostMessageOfQuestion($payload);
 
         } catch (SlackErrorResponse $e) {
-            $error_message = $e->getMessage();
-
-            Log::info($error_message);
-            echo $error_message;
+            Log::info($e->getMessage());
         }
+    }
+
+    /**
+     * introduceQuestionForm()のapi接続部分
+     */
+    public function executeChatPostMessageOfIntroduction ()
+    {
+        $this->slack_client->chatPostMessage([
+            'channel' => config('const.slack_id.question_channel'),
+            'blocks' => json_encode(app()->make('App\Http\Controllers\BlockPayloads\AnonymousQuestionPayloadController')->createQuestionFormIntroductionBlocks())
+        ]);
     }
     
     /**
-    * 匿名質問フォームを紹介するメッセージを送る
-    */
+     * 匿名質問フォームを紹介するメッセージを送る
+     */
     public function introduceQuestionForm ()
     {
         try {
-            $this->slack_client->chatPostMessage([
-                'channel' => config('const.slack_id.question_channel'),
-                'blocks' => json_encode(app()->make('App\Http\Controllers\BlockPayloads\AnonymousQuestionPayloadController')->createQuestionFormIntroductionBlocks())
-            ]);
+            $this->executeChatPostMessageOfIntroduction();
 
         } catch (SlackErrorResponse $e) {
-            $error_message = $e->getMessage();
-
-            Log::info($error_message);
-            echo $error_message;
+            Log::info($e->getMessage());
         }
     }
-} 
+}

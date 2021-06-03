@@ -7,8 +7,10 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\WithFaker;
 use Tests\TestCase;
 use Mockery;
+use Mockery\MockInterface;
 use Illuminate\Http\Request;
 use JoliCode\Slack\Exception\SlackErrorResponse;
+use Mockery\Adapter\Phpunit\MockeryPHPUnitIntegration;
 
 class AnonymousQuestionTest extends TestCase
 {
@@ -28,7 +30,7 @@ class AnonymousQuestionTest extends TestCase
      * 
      * @return object
      */
-    public function provideSlackClientMock()
+    public function provideSlackClientMock ()
     {
         $client_factory_mock = Mockery::mock('alias:'. JoliCode\Slack\ClientFactory::class);
         $client_factory_mock->shouldReceive('create')
@@ -39,41 +41,31 @@ class AnonymousQuestionTest extends TestCase
     }
 
     /**
-     * ルート"/slash/ask_questions"のテスト
+     * AnonymousQuestionController@openQuestionFormのテスト
+     * 
+     * ルート"/slash/ask_questions"が正しく設定されているかをテストする
      * 
      * @runInSeparateProcess
      * @preserveGlobalState disabled
      */
-    public function testAskQuestionsRoute ()
+    public function testRoutingToOpenQuestionForm ()
     {
-        $api_mock = Mockery::mock('overload:'.JoliCode\Slack\Api\Client::class);
-        $api_mock->shouldReceive('viewsOpen')
-            ->with(Mockery::any())
-            ->andReturn(true);
-
-        $slack_client_mock = $this->provideSlackClientMock();
-
-        $anonymous_question_controller = Mockery::mock(
-            'App\Http\Controllers\AnonymousQuestionController[openQuestionForm]', 
-            [$slack_client_mock]
-        );
-
-        $anonymous_question_controller->shouldReceive('openQuestionForm')
-                            ->with(Mockery::any())
-                            ->andReturn(http_response_code( 200 ));
+        $mock = Mockery::mock('overload:'.AnonymousQuestionController::class);
+        $mock->shouldReceive('openQuestionForm')
+            ->andReturn(response('', 200));
 
         $response = $this->json('POST', '/slash/ask_questions', ['trigger_id'=>'12345.98765.abcd2358fdea']);
         $response->assertStatus(200);
     }
 
     /**
-     * AnonymousQuestionController@openQuestionFormの正常処理テスト
+     * AnonymousQuestionController@executeViewsOpenの正常処理テスト
      *
      * @return void
      * @runInSeparateProcess
      * @preserveGlobalState disabled
      */
-    public function testSuccessOpenQuestionForm()
+    public function testSuccessExecuteViewsOpen ()
     {
         $api_mock = Mockery::mock('overload:'.JoliCode\Slack\Api\Client::class);
         $api_mock->shouldReceive('viewsOpen')
@@ -93,40 +85,37 @@ class AnonymousQuestionTest extends TestCase
     }
 
     /**
-     * AnonymousQuestionController@openQuestionFormの例外処理テスト
-     * 
-     * 引数が存在しない場合とapi接続失敗時にエラー
+     * AnonymousQuestionController@executeViewsOpenの例外処理テスト
      *
      * @return void
      * @runInSeparateProcess
      * @preserveGlobalState disabled
      */
-    public function testErrorOpenQuestionForm ()
+    public function testErrorExecuteViewsOpen ()
     {
+        $this->expectException(SlackErrorResponse::class);
+        $this->expectExceptionMessage('Slack returned error code "dummy exception: viewsOpen"');
+
         $api_mock = Mockery::mock('overload:'.JoliCode\Slack\Api\Client::class);
         $api_mock->shouldReceive('viewsOpen')
-            ->andThrow(new SlackErrorResponse('Slack returned error code'))
+            ->andThrow(new SlackErrorResponse('dummy exception: viewsOpen'))
             ->getMock();
 
         $slack_client_mock = $this->provideSlackClientMock();
         $anonymous_question_controller = new AnonymousQuestionController($slack_client_mock);
         
+
         $dummy_request = new Request();
         $dummy_request->replace(['trigger_id'=>'']);
-
-        $anonymous_question_controller->openQuestionForm($dummy_request); 
-        $this->expectOutputString('Slack returned error code "dummy exception: viewsOpen"'); 
+        $anonymous_question_controller->executeViewsOpen($dummy_request); 
     }
 
     /**
-     * AnonymousQuestionController@sendQuestionToChannelの正常処理テスト
-     * 
-     * @runInSeparateProcess
-     * @preserveGlobalState disabled
+     * ダミーのpayloadを返す
      */
-    public function testSuccessSendQuestionToChannel ()
+    public function provideDummyPayload ()
     {
-        $dummy_payload = ['view'=>[
+        return ['view'=>[
             'state'=>[
                 'values'=>[
                     'mentors-block'=>['mentor'=>['selected_option'=>['value'=>0]]],
@@ -134,7 +123,16 @@ class AnonymousQuestionTest extends TestCase
                 ]
             ]
         ]];
+    }
 
+    /**
+     * AnonymousQuestionController@executeChatPostMessageOfQuestionの正常処理テスト
+     * 
+     * @runInSeparateProcess
+     * @preserveGlobalState disabled
+     */
+    public function testSuccessExecuteChatPostMessageOfQuestion ()
+    {
         $api_mock = Mockery::mock('overload:'.JoliCode\Slack\Api\Client::class);
         $api_mock->shouldReceive('chatPostMessage')
             ->with(\Mockery::on(function ($contents) {
@@ -146,47 +144,57 @@ class AnonymousQuestionTest extends TestCase
         $slack_client_mock = $this->provideSlackClientMock();
         $anonymous_question_controller = new AnonymousQuestionController($slack_client_mock);
 
-        $anonymous_question_controller->sendQuestionToChannel($dummy_payload);
+        $anonymous_question_controller->executeChatPostMessageOfQuestion($this->provideDummyPayload());
     }
 
     /**
-     * AnonymousQuestionController@sendQuestionToChannelの例外処理テスト
-     * 
-     * api接続失敗時にエラー
+     * AnonymousQuestionController@executeChatPostMessageOfQuestionの例外処理テスト
      *
      * @runInSeparateProcess
      * @preserveGlobalState disabled
      */
-    public function testErrorSendQuestionToChannel ()
+    public function testErrorExecuteChatPostMessageOfQuestion ()
     {
-        $dummy_payload = ['view'=>[
-            'state'=>[
-                'values'=>[
-                    'mentors-block'=>['mentor'=>['selected_option'=>['value'=>0]]],
-                    'question-block'=>['question'=>['value'=>'Laravelについて']]
-                ]
-            ]
-        ]];
+        $this->expectException(SlackErrorResponse::class);
+        $this->expectExceptionMessage('Slack returned error code "dummy exception: chatPostMessage"');
 
         $api_mock = Mockery::mock('overload:'.JoliCode\Slack\Api\Client::class);
         $api_mock->shouldReceive('chatPostMessage')
-            ->andThrow(new SlackErrorResponse('Slack returned error code'))
+            ->andThrow(new SlackErrorResponse('dummy exception: chatPostMessage'))
             ->getMock();
 
         $slack_client_mock = $this->provideSlackClientMock();
         $anonymous_question_controller = new AnonymousQuestionController($slack_client_mock);
     
-        $anonymous_question_controller->sendQuestionToChannel($dummy_payload);
-        $this->expectOutputString('Slack returned error code "dummy exception: chatPostMessage"'); 
+        $anonymous_question_controller->executeChatPostMessageOfQuestion($this->provideDummyPayload());
     }
 
     /**
-     * AnonymousQuestionController@introduceQuestionFormの正常処理テスト
+     * AnonymousQuestionController@sendQuestionToChannelの正常処理テスト
+     */
+    public function testSuccessSendQuestionToChannel ()
+    {
+        $api_mock = Mockery::mock('overload:'.JoliCode\Slack\Api\Client::class);
+        $api_mock->shouldReceive('chatPostMessage')
+            ->with(\Mockery::on(function ($contents) {
+                $contents_isset = isset($contents['channel']) && isset($contents['username']) && isset($contents['blocks']);
+                return $contents_isset;
+            }))
+            ->andReturn(true);
+        
+        $slack_client_mock = $this->provideSlackClientMock();
+        $anonymous_question_controller = new AnonymousQuestionController($slack_client_mock);
+
+        $anonymous_question_controller->sendQuestionToChannel($this->provideDummyPayload());
+    }
+
+    /**
+     * AnonymousQuestionController@executeChatPostMessageOfIntroductionの正常処理テスト
      * 
      * @runInSeparateProcess
      * @preserveGlobalState disabled
      */
-    public function testSuccessIntroduceQuestionForm()
+    public function testSuccessExecuteChatPostMessageOfIntroduction ()
     {
         $api_mock = Mockery::mock('overload:'.JoliCode\Slack\Api\Client::class);
         $api_mock->shouldReceive('chatPostMessage')
@@ -199,28 +207,30 @@ class AnonymousQuestionTest extends TestCase
         $slack_client_mock = $this->provideSlackClientMock();
         $anonymous_question_controller = new AnonymousQuestionController($slack_client_mock);
 
-        $anonymous_question_controller->introduceQuestionForm();
+        $anonymous_question_controller->executeChatPostMessageOfIntroduction();
     }
 
     /**
-     * AnonymousQuestionController@introduceQuestionFormの例外処理テスト
+     * AnonymousQuestionController@executeChatPostMessageOfIntroductionの例外処理テスト
      * 
      * api接続失敗時にエラー
      * 
      * @runInSeparateProcess
      * @preserveGlobalState disabled
      */
-    public function testErrorIntroduceQuestionForm()
+    public function testErrorExecuteChatPostMessageOfIntroduction ()
     {
+        $this->expectException(SlackErrorResponse::class);
+        $this->expectExceptionMessage('Slack returned error code "dummy exception: chatPostMessage"');
+
         $api_mock = Mockery::mock('overload:'.JoliCode\Slack\Api\Client::class);
         $api_mock->shouldReceive('chatPostMessage')
-            ->andThrow(new SlackErrorResponse('Slack returned error code'))
+            ->andThrow(new SlackErrorResponse('dummy exception: chatPostMessage'))
             ->getMock();
 
         $slack_client_mock = $this->provideSlackClientMock();
         $anonymous_question_controller = new AnonymousQuestionController($slack_client_mock);
 
-        $anonymous_question_controller->introduceQuestionForm();
-        $this->expectOutputString('Slack returned error code "dummy exception: chatPostMessage"'); 
+        $anonymous_question_controller->executeChatPostMessageOfIntroduction();
     }
 }
