@@ -1,17 +1,22 @@
 <?php
 
-return [
-    'slack_id' => [
-        'general' => 'C01MGFXJSD8',
-        'administrator' => 'U01MGFXHWF4',
-        'mentor_channel' => 'C01TCU28B28',
-        'question_channel' => 'C01SM8H8TDY',
-        'mentors' => [
-            // 今川メンター, 菊池メンター, 工藤メンター, 近藤メンター, 平野メンター, 山際メンター
-            // 'UU6S9J5EZ', 'UTY2QH0RG', 'UU6RPHQGG', 'U01CE7ZL1T3', 'UU6RPJUJU', 'UTZC4SKPV'
+$mentor_names = array_map('trim', explode(',', env('SLACK_ID_MENTORS_NAME')));
+$mentor_descriptions = array_map('trim', explode(',', env('SLACK_ID_MENTORS_DESCRIPTION')));
+$mentor_ids = array_map('trim', explode(',', env('SLACK_ID_MENTORS_ID')));
 
-            // テスト用
-            'U01PE3ZUX5E', 'U01SM47RJLT', 'UU6RPHQGG', 'U01CE7ZL1T3', 'UU6RPJUJU', 'UTZC4SKPV'
-        ]
+$const = [
+    'slack_id' => [
+        'general' => env('SLACK_ID_GENERAL'),
+        'administrator' => env('SLACK_ID_ADMINISTRATOR'),
+        'mentor_channel' => env('SLACK_ID_MENTOR_CHANNEL'),
+        'question_channel' => env('SLACK_ID_QUESTION_CHANNEL'),
     ]
 ];
+
+for ($i=0; $i < count($mentor_names); $i++) {
+    $const['slack_id']['mentors'][$i]['name'] = $mentor_names[$i];
+    $const['slack_id']['mentors'][$i]['description'] = $mentor_descriptions[$i];
+    $const['slack_id']['mentors'][$i]['id'] = $mentor_ids[$i];
+}
+
+return $const;

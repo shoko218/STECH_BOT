@@ -20,12 +20,12 @@ class AnonymousQuestionController extends Controller
         }
     }
 
-   /**
-    * /ask-questionのコマンドの応答としてモーダルを表示
-    *
-    * @param Request $request
-    */
-    public function openQuestionForm (Request $request) 
+    /**
+     * /ask-questionのコマンドの応答としてモーダルを表示
+     *
+     * @param Request $request
+     */
+    public function openQuestionForm(Request $request)
     {
         response('', 200)->send();
 
@@ -44,20 +44,20 @@ class AnonymousQuestionController extends Controller
         }
     }
 
-   /**
-    * 受け付けた匿名質問をメッセージとして公開チャンネルに流す
-    * 
-    * @param Request $request
-    * @var string $mention メンション先を定義
-    */
-    public function sendQuestionToChannel ($payload)
+    /**
+     * 受け付けた匿名質問をメッセージとして公開チャンネルに流す
+     *
+     * @param Request $request
+     * @var string $mention メンション先を定義
+     */
+    public function sendQuestionToChannel($payload)
     {
         try {
             $user_inputs = $payload['view']['state']['values'];
             $mentor_number = intval($user_inputs['mentors-block']['mentor']['selected_option']['value']);
-            $question_sentence = $user_inputs['question-block']['question']['value'];    
+            $question_sentence = $user_inputs['question-block']['question']['value'];
 
-            $mention = $mentor_number == 6 ? ' 全体へ' : config("const.slack_id.mentors")[$mentor_number];
+            $mention = $mentor_number == count(config("const.slack_id.mentors")) ? ' 全体へ' : config("const.slack_id.mentors")[$mentor_number]['id'];
             $this->slack_client->chatPostMessage([
                 'channel' => config('const.slack_id.question_channel'),
                 'username' => '匿名の相談です',
@@ -88,7 +88,6 @@ class AnonymousQuestionController extends Controller
             ]);
 
             return true;
-
         } catch (SlackErrorResponse $e) {
             Log::info($e->getMessage());
             return false;
@@ -96,7 +95,7 @@ class AnonymousQuestionController extends Controller
     }/**
     * 匿名質問フォームを紹介するメッセージを送る
     */
-    public function introduceQuestionForm ()
+    public function introduceQuestionForm()
     {
         try {
             $this->slack_client->chatPostMessage([
@@ -105,10 +104,9 @@ class AnonymousQuestionController extends Controller
             ]);
 
             return true;
-
         } catch (SlackErrorResponse $e) {
             Log::info($e->getMessage());
             return false;
         }
     }
-} 
+}
