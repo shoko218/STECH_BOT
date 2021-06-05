@@ -39,7 +39,7 @@ class ConfirmMeeting extends Command
     public function handle()
     {
         try {
-            app()->make('App\Http\Controllers\MeetingController')->AskToHoldMeeting();
+            app()->make('App\Http\Controllers\MeetingController')->askToHoldMeeting();
         } catch (\Throwable $th) {
             Log::info($th);
         }

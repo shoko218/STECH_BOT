@@ -84,13 +84,6 @@ class MeetingPayloadController extends Controller
                 "type" => "section",
                 "text" => [
                     "type" => "mrkdwn",
-                    "text" => ":bell: *$meeting_day_name MTG参加の皆様リマインドです* :bell:"
-                ]
-            ],
-            [
-                "type" => "section",
-                "text" => [
-                    "type" => "mrkdwn",
                     "text" => "定例ミーティングは本日の *20:00* - です"
                 ]
             ],
