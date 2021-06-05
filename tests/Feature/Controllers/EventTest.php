@@ -9,6 +9,8 @@ use Illuminate\Http\Request;
 use Mockery;
 use Tests\TestCase;
 use App\Model\Event;
+use ArgumentCountError;
+use ErrorException;
 use InvalidArgumentException;
 use JoliCode\Slack\Exception\SlackErrorResponse;
 
@@ -61,10 +63,10 @@ class EventTest extends TestCase
     }
 
     /**
-     * EventController@showCreateEventModalの正常処理テスト
-     * イベント作成フォームが表示できるかどうか
+     * EventController@executeViewsOpenOfCreateEventModalの正常処理テスト
+     * ルート"/slash/create_event"が正しく設定されているかをテストする
      */
-    public function testSuccessShowCreateEventModal()
+    public function testRoutingToShowCreateEventModal()
     {
         $event_payload_mock = Mockery::mock('overload:App\Http\Controllers\BlockPayloads\EventPayloadController');
         $event_payload_mock->shouldReceive('getCreateEventModalConstitution')
@@ -82,24 +84,49 @@ class EventTest extends TestCase
             })
             ->andReturn('error');
 
-        $trigger_id = $this->faker->userName;
-
-        $request = new Request();
-        $request->merge([
-            'trigger_id' => $trigger_id,
-        ]);
-
-        $response = app()->make('App\Http\Controllers\EventController')->showCreateEventModal($request);
-
-        $this->assertStringContainsString('ok', $response);
+        $response = $this->json('POST', '/slash/show_create_event_modal', ['trigger_id' => $this->faker->userName,'user_id' => config('const.slack_id.administrator')]);
+        $response->assertStatus(200);
     }
 
     /**
-     * EventController@showCreateEventModalの例外処理テスト
+     * EventController@executeViewsOpenOfCreateEventModalの正常処理テスト
+     * イベント作成フォームが表示できるかどうか
+     */
+    public function testSuccessExecuteViewsOpenOfCreateEventModal()
+    {
+        $event_payload_mock = Mockery::mock('overload:App\Http\Controllers\BlockPayloads\EventPayloadController');
+        $event_payload_mock->shouldReceive('getCreateEventModalConstitution')
+            ->andReturn(['key' => 'value']);
+
+        $guzzle_http_client_mock = Mockery::mock('overload:GuzzleHttp\Client');
+        $guzzle_http_client_mock->shouldReceive('request')
+            ->withArgs(function ($method, $url, $options) {
+                return ($options['headers']['Authorization']  !==  'Bearer ' && $options['json']['view'] !== null);
+            })
+            ->andReturn('ok')
+            ->shouldReceive('request')
+            ->withArgs(function ($method, $url, $options) {
+                return !($options['headers']['Authorization']  !==  'Bearer ' && $options['json']['view'] !== null);
+            })
+            ->andReturn('error');
+
+        $request = new Request();
+        $request->merge([
+            'trigger_id' => $this->faker->userName,
+        ]);
+
+        app()->make('App\Http\Controllers\EventController')->ExecuteViewsOpenOfCreateEventModal($request);
+    }
+
+    /**
+     * EventController@executeViewsOpenOfCreateEventModalの例外処理テスト
      * イベント作成フォーム表示時に例外が発生した場合、例外処理を無事に行えるかどうか
      */
-    public function testErrorShowCreateEventModalIfExpectionOccurs()
+    public function testErrorExecuteViewsOpenOfCreateEventModalIfExpectionOccurs()
     {
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('GuzzleHttp returned error code');
+
         $event_payload_mock = Mockery::mock('overload:App\Http\Controllers\BlockPayloads\EventPayloadController');
         $event_payload_mock->shouldReceive('getCreateEventModalConstitution')
             ->andReturn(['key' => 'value']);
@@ -115,14 +142,12 @@ class EventTest extends TestCase
             'trigger_id' => $trigger_id,
         ]);
 
-        $response = app()->make('App\Http\Controllers\EventController')->showCreateEventModal($request);
-
-        $this->assertStringContainsString(false, $response);
+        app()->make('App\Http\Controllers\EventController')->ExecuteViewsOpenOfCreateEventModal($request);
     }
 
     /**
      * EventController@createEventの正常処理テスト
-     * イベントを登録できるかどうか
+     * 正常に実行できるかどうか
      */
     public function testSuccessCreateEvent()
     {
@@ -202,7 +227,92 @@ class EventTest extends TestCase
             ]
         ];
 
-        $response = app()->make('App\Http\Controllers\EventController')->createEvent($payload);
+        app()->make('App\Http\Controllers\EventController')->createEvent($payload);
+    }
+
+    /**
+     * EventController@executeRegisterEventToDBの正常処理テスト
+     * DBにイベントを登録できるかどうか
+     */
+    public function testSuccessExecuteRegisterEventToDB()
+    {
+        $event_payload_mock = Mockery::mock('overload:App\Http\Controllers\BlockPayloads\EventPayloadController');
+        $event_payload_mock->shouldReceive('getCreatedEventMessageBlockConstitution')
+            ->andReturn(['key' => 'value']);
+
+        $tmp_event_datetime = $this->faker->dateTimeBetween('+2 week', '+4 week');
+        $tmp_notice_datetime = $this->faker->dateTimeBetween('tomorrow', '+13 day');
+
+        $event_datetime = new DateTime($tmp_event_datetime->format('Y-m-d H:'.($this->faker->numberBetween(0, 3) * 15).':00'));
+        $notice_datetime = new DateTime($tmp_notice_datetime->format('Y-m-d H:'.($this->faker->numberBetween(0, 3) * 15).':00'));
+
+        $name = $this->faker->realText(20, 2);
+        $description = $this->faker->realText(200, 2);
+        $url = $this->faker->url();
+
+        $payload =[
+            'view' => [
+                'state' => [
+                    'values' => [
+                        'name' => [
+                            'name' => [
+                                'value' => $name
+                            ]
+                        ],
+                        'description' => [
+                            'description' => [
+                                'value' => $description
+                            ]
+                        ],
+                        'url' => [
+                            'url' => [
+                                'value' => $url
+                            ]
+                        ],
+                        'event_date' => [
+                            'event_date' => [
+                                'selected_date' => $event_datetime->format('Y-m-d')
+                            ]
+                        ],
+                        'event_time' => [
+                            'event_hour' => [
+                                'selected_option' => [
+                                    'value' => $event_datetime->format('H'),
+                                ]
+                            ],
+                            'event_minute' => [
+                                'selected_option' => [
+                                    'value' => $event_datetime->format('i'),
+                                ]
+                            ]
+                        ],
+                        'notice_date' => [
+                            'notice_date' => [
+                                'selected_date' => $notice_datetime->format('Y-m-d')
+                            ]
+                        ],
+                        'notice_time' => [
+                            'notice_hour' => [
+                                'selected_option' => [
+                                    'value' => $notice_datetime->format('H')
+                                ]
+                            ],
+                            'notice_minute' => [
+                                'selected_option' => [
+                                    'value' => $notice_datetime->format('i'),
+                                ]
+                            ]
+                        ],
+
+                    ]
+                ]
+            ],
+            'user' => [
+                'id' => $this->faker->userName
+            ]
+        ];
+
+        app()->make('App\Http\Controllers\EventController')->executeRegisterEventToDB($payload);
 
         $this->assertDatabaseHas('events', [
             'name' => $name,
@@ -211,15 +321,13 @@ class EventTest extends TestCase
             'event_datetime' => $event_datetime,
             'notice_datetime' => $notice_datetime
         ]);
-
-        $this->assertInstanceOf('JoliCode\Slack\Api\Model\ChatPostMessagePostResponse200', $response);
     }
 
     /**
-     * EventController@createEventのエラー処理テスト
+     * EventController@executeRegisterEventToDBのエラー処理テスト
      * イベント登録時、お知らせ日時が現在時刻以前だった場合にバリデーション処理できるかどうか
      */
-    public function testErrorCreateEventIfNoticeDatetimeIsThePast()
+    public function testErrorExecuteRegisterEventToDBIfNoticeDatetimeIsThePast()
     {
         $event_payload_mock = Mockery::mock('overload:App\Http\Controllers\BlockPayloads\EventPayloadController');
         $event_payload_mock->shouldReceive('getCreatedEventMessageBlockConstitution')
@@ -297,7 +405,7 @@ class EventTest extends TestCase
             ]
         ];
 
-        $response = app()->make('App\Http\Controllers\EventController')->createEvent($payload);
+        app()->make('App\Http\Controllers\EventController')->executeRegisterEventToDB($payload);
 
         $this->assertDatabaseMissing('events', [
             'name' => $name,
@@ -306,18 +414,13 @@ class EventTest extends TestCase
             'event_datetime' => $event_datetime,
             'notice_datetime' => $notice_datetime
         ]);
-
-        $result = $response->getData();
-
-        $this->assertStringContainsString('現在時刻以降の日時を入力してください。', $result->errors->notice_date);
-        $this->assertStringContainsString('errors', $result->response_action);
     }
 
     /**
-     * EventController@createEventのエラー処理テスト
+     * EventController@executeRegisterEventToDBのエラー処理テスト
      * イベント登録時、イベント日時が現在時刻以前だった場合にバリデーション処理できるかどうか
      */
-    public function testErrorCreateEventIfEventDatetimeIsThePast()
+    public function testErrorExecuteRegisterEventToDBIfEventDatetimeIsThePast()
     {
         $event_payload_mock = Mockery::mock('overload:App\Http\Controllers\BlockPayloads\EventPayloadController');
         $event_payload_mock->shouldReceive('getCreatedEventMessageBlockConstitution')
@@ -395,7 +498,7 @@ class EventTest extends TestCase
             ]
         ];
 
-        $response = app()->make('App\Http\Controllers\EventController')->createEvent($payload);
+        app()->make('App\Http\Controllers\EventController')->executeRegisterEventToDB($payload);
 
         $this->assertDatabaseMissing('events', [
             'name' => $name,
@@ -404,18 +507,13 @@ class EventTest extends TestCase
             'event_datetime' => $event_datetime,
             'notice_datetime' => $notice_datetime
         ]);
-
-        $result = $response->getData();
-
-        $this->assertStringContainsString('現在時刻以降の日時を入力してください。', $result->errors->event_date);
-        $this->assertStringContainsString('errors', $result->response_action);
     }
 
     /**
-     * EventController@createEventのエラー処理テスト
+     * EventController@executeRegisterEventToDBのエラー処理テスト
      * イベント登録時、イベント日時がお知らせ日時以前だった場合にバリデーション処理できるかどうか
      */
-    public function testErrorCreateEventIfEventDateIsBeforeNoticeDate()
+    public function testErrorExecuteRegisterEventToDBIfEventDateIsBeforeNoticeDate()
     {
         $event_payload_mock = Mockery::mock('overload:App\Http\Controllers\BlockPayloads\EventPayloadController');
         $event_payload_mock->shouldReceive('getCreatedEventMessageBlockConstitution')
@@ -493,7 +591,7 @@ class EventTest extends TestCase
             ]
         ];
 
-        $response = app()->make('App\Http\Controllers\EventController')->createEvent($payload);
+        app()->make('App\Http\Controllers\EventController')->executeRegisterEventToDB($payload);
 
         $this->assertDatabaseMissing('events', [
             'name' => $name,
@@ -502,18 +600,13 @@ class EventTest extends TestCase
             'event_datetime' => $event_datetime,
             'notice_datetime' => $notice_datetime
         ]);
-
-        $result = $response->getData();
-
-        $this->assertStringContainsString('お知らせする日時はイベントの日時より前に設定してください。', $result->errors->notice_date);
-        $this->assertStringContainsString('errors', $result->response_action);
     }
 
     /**
-     * EventController@createEventのエラー処理テスト
+     * EventController@executeRegisterEventToDBのエラー処理テスト
      * イベント登録時、イベントURLが無効なURLだった場合にバリデーション処理できるかどうか
      */
-    public function testErrorCreateEventIfEventURLIsInvalid()
+    public function testErrorExecuteRegisterEventToDBIfEventURLIsInvalid()
     {
         $event_payload_mock = Mockery::mock('overload:App\Http\Controllers\BlockPayloads\EventPayloadController');
         $event_payload_mock->shouldReceive('getCreatedEventMessageBlockConstitution')
@@ -591,7 +684,7 @@ class EventTest extends TestCase
             ]
         ];
 
-        $response = app()->make('App\Http\Controllers\EventController')->createEvent($payload);
+        app()->make('App\Http\Controllers\EventController')->executeRegisterEventToDB($payload);
 
         $this->assertDatabaseMissing('events', [
             'name' => $name,
@@ -600,38 +693,60 @@ class EventTest extends TestCase
             'event_datetime' => $event_datetime,
             'notice_datetime' => $notice_datetime
         ]);
-
-        $result = $response->getData();
-
-        $this->assertStringContainsString('有効なURLを入力してください。', $result->errors->url);
-        $this->assertStringContainsString('errors', $result->response_action);
     }
 
     /**
-     * EventController@createEventの例外処理テスト
-     * イベント登録時に例外が発生した場合、例外処理を無事に行えるかどうか
+     * EventController@executeRegisterEventToDBの例外処理テスト
+     * イベント登録時に例外が発生した場合、例外を返せるか
      */
-    public function testErrorCreateEventIfExpectionOccurs()
+    public function testErrorExecuteRegisterEventToDBIfExpectionOccurs()
+    {
+        $this->expectException(ErrorException::class);
+        $this->expectExceptionMessage('Undefined index: view');
+
+        $event_payload_mock = Mockery::mock('overload:App\Http\Controllers\BlockPayloads\EventPayloadController');
+        $event_payload_mock->shouldReceive('getCreatedEventMessageBlockConstitution')
+            ->andReturn(['key' => 'value']);
+
+        $payload = [];
+
+        app()->make('App\Http\Controllers\EventController')->executeRegisterEventToDB($payload);
+    }
+
+    /**
+     * EventController@executeChatPostMessageOfCreateEventの正常処理テスト
+     * イベント登録メッセージを送信できるかどうか
+     */
+    public function testSuccessExecuteChatPostMessageOfCreateEvent()
     {
         $event_payload_mock = Mockery::mock('overload:App\Http\Controllers\BlockPayloads\EventPayloadController');
         $event_payload_mock->shouldReceive('getCreatedEventMessageBlockConstitution')
             ->andReturn(['key' => 'value']);
 
-        $payload = [
-            'user' => [
-                'id' => $this->faker->userName
-            ]
-        ];
+        $user_id = $this->faker->userName;
+        $event = factory(Event::class)->create();
 
-        $response = app()->make('App\Http\Controllers\EventController')->createEvent($payload);
-
-        $this->assertStringContainsString(false, $response);
+        app()->make('App\Http\Controllers\EventController')->executeChatPostMessageOfCreateEvent($user_id, $event);
     }
 
+    /**
+     * EventController@executeChatPostMessageOfCreateEventのエラー処理テスト
+     * イベント登録メッセージを送信時に例外が発生した場合、例外を返せるか
+     */
+    public function testErrorExecuteChatPostMessageOfCreateEventIfExpectionOccurs()
+    {
+        $this->expectException(ErrorException::class);
+        $this->expectExceptionMessage('Trying to get property \'_mockery_expectations_count\' of non-object');
+
+        $user_id = $this->faker->userName;
+        $event = null;
+
+        app()->make('App\Http\Controllers\EventController')->executeChatPostMessageOfCreateEvent($user_id, $event);
+    }
 
     /**
      * EventController@deleteEventの正常処理テスト
-     * お知らせもリマインドもしていない時にイベントを削除できるかどうか
+     * 正常に実行できるかどうか
      *
      * @runInSeparateProcess
      * @preserveGlobalState disabled
@@ -659,7 +774,40 @@ class EventTest extends TestCase
             ]
         ];
 
-        $response = app()->make('App\Http\Controllers\EventController')->deleteEvent($payload);
+        app()->make('App\Http\Controllers\EventController')->deleteEvent($payload);
+    }
+
+    /**
+     * EventController@executeDeleteEventFromDBの正常処理テスト
+     * お知らせもリマインドもしていない時にイベントを削除できるかどうか
+     *
+     * @runInSeparateProcess
+     * @preserveGlobalState disabled
+     */
+    public function testSuccessExecuteDeleteEventFromDB()
+    {
+        $event = factory(Event::class)->create();
+
+        $this->assertDatabaseHas('events', [
+            'name' => $event->name,
+            'description' => $event->description,
+            'url' => $event->url,
+            'event_datetime' => $event->event_datetime,
+            'notice_datetime' => $event->notice_datetime
+        ]);
+
+        $payload = [
+            'actions' => [
+                [
+                    'value' => $event->id
+                ]
+            ],
+            'user' =>[
+                'id' => $this->faker->userName
+            ]
+        ];
+
+        app()->make('App\Http\Controllers\EventController')->executeDeleteEventFromDB($payload);
 
         $this->assertDatabaseMissing('events', [
             'name' => $event->name,
@@ -668,18 +816,16 @@ class EventTest extends TestCase
             'event_datetime' => $event->event_datetime,
             'notice_datetime' => $event->notice_datetime
         ]);
-
-        $this->assertInstanceOf('JoliCode\Slack\Api\Model\ChatPostMessagePostResponse200', $response['post_msg']);
     }
 
     /**
-     * EventController@deleteEventの正常処理テスト
+     * EventController@executeDeleteEventFromDBの正常処理テスト
      * 既にお知らせしている時にイベントを削除できるかどうか
      *
      * @runInSeparateProcess
      * @preserveGlobalState disabled
      */
-    public function testSuccessDeleteEventIfAlreadyNoticed()
+    public function testSuccessExecuteDeleteEventFromDBIfAlreadyNoticed()
     {
         $event = factory(Event::class)->create();
         $notice_ts = $this->faker->randomNumber;
@@ -706,7 +852,7 @@ class EventTest extends TestCase
             ]
         ];
 
-        $response = app()->make('App\Http\Controllers\EventController')->deleteEvent($payload);
+        app()->make('App\Http\Controllers\EventController')->executeDeleteEventFromDB($payload);
 
         $this->assertDatabaseMissing('events', [
             'name' => $event->name,
@@ -716,19 +862,16 @@ class EventTest extends TestCase
             'notice_datetime' => $event->notice_datetime,
             'notice_ts' => $notice_ts
         ]);
-
-        $this->assertInstanceOf('JoliCode\Slack\Api\Model\ChatDeletePostResponse200', $response['delete_notice_post']);
-        $this->assertInstanceOf('JoliCode\Slack\Api\Model\ChatPostMessagePostResponse200', $response['post_msg']);
     }
 
     /**
-     * EventController@deleteEventの正常処理テスト
+     * EventController@executeDeleteEventFromDBの正常処理テスト
      * 既にリマインドしている時にイベントを削除できるかどうか
      *
      * @runInSeparateProcess
      * @preserveGlobalState disabled
      */
-    public function testSuccessDeleteEventIfAlreadyReminded()
+    public function testSuccessExecuteDeleteEventFromDBIfAlreadyReminded()
     {
         $event = factory(Event::class)->create();
         $remind_ts = $this->faker->randomNumber;
@@ -755,7 +898,7 @@ class EventTest extends TestCase
             ]
         ];
 
-        $response = app()->make('App\Http\Controllers\EventController')->deleteEvent($payload);
+        app()->make('App\Http\Controllers\EventController')->executeDeleteEventFromDB($payload);
 
         $this->assertDatabaseMissing('events', [
             'name' => $event->name,
@@ -765,36 +908,77 @@ class EventTest extends TestCase
             'notice_datetime' => $event->notice_datetime,
             'remind_ts' => $remind_ts
         ]);
-
-        $this->assertInstanceOf('JoliCode\Slack\Api\Model\ChatDeletePostResponse200', $response['delete_remind_post']);
-        $this->assertInstanceOf('JoliCode\Slack\Api\Model\ChatPostMessagePostResponse200', $response['post_msg']);
     }
 
     /**
-     * EventController@deleteEventの例外処理テスト
+     * EventController@executeDeleteEventFromDBの例外処理テスト
      * イベント削除時に例外が発生した場合、例外処理を無事に行えるかどうか
      *
      * @runInSeparateProcess
      * @preserveGlobalState disabled
      */
-    public function testErrorDeleteEventIfExpectionOccurs()
+    public function testErrorExecuteDeleteEventFromDBIfExpectionOccurs()
     {
-        $payload = [
-            'user' =>[
-                'id' => $this->faker->userName
-            ]
-        ];
+        $this->expectException(ErrorException::class);
+        $this->expectExceptionMessage('Undefined index: actions');
 
-        $response = app()->make('App\Http\Controllers\EventController')->deleteEvent($payload);
+        $payload = [];
+        app()->make('App\Http\Controllers\EventController')->executeDeleteEventFromDB($payload);
+    }
 
-        $this->assertStringContainsString(false, $response);
+    /**
+     * EventController@executeChatPostMessageOfDeleteEventの正常処理テスト
+     * イベント削除メッセージを送信できるかどうか
+     *
+     * @runInSeparateProcess
+     * @preserveGlobalState disabled
+     */
+    public function testSuccessExecuteChatPostMessageOfDeleteEvent()
+    {
+        $user_id = $this->faker->userName;
+        $event_name = $this->faker->userName;
+
+        app()->make('App\Http\Controllers\EventController')->executeChatPostMessageOfDeleteEvent($user_id, $event_name);
+    }
+
+    /**
+     * EventController@executeChatPostMessageOfDeleteEventのエラー処理テスト
+     * イベント削除メッセージを送信時に例外が発生した場合、例外を返せるか
+     */
+    public function testErrorExecuteChatPostMessageOfDeleteEventIfExpectionOccurs()
+    {
+        $this->expectException(ErrorException::class);
+
+        $user_id = $this->faker->userName;
+
+        app()->make('App\Http\Controllers\EventController')->executeChatPostMessageOfDeleteEvent($user_id);
     }
 
     /**
      * EventController@showEventsの正常処理テスト
-     * 開催予定のイベントがある場合にイベントを表示できるかどうか
+     * 正常に実行できるかどうか
      */
-    public function testSuccessShowEventIfEventIs()
+    public function testSuccessShowEvents()
+    {
+        $event_payload_mock = Mockery::mock('overload:App\Http\Controllers\BlockPayloads\EventPayloadController');
+        $event_payload_mock->shouldReceive('getShowEventBlockConstitution')
+            ->andReturn(['key' => 'value'])
+            ->shouldReceive('getShowHeaderBlockConstitution')
+            ->andReturn(['key' => 'value']);
+
+        $request = new Request();
+        $request->merge([
+            'user_id' => $this->faker->userName,
+        ]);
+
+        app()->make('App\Http\Controllers\EventController')->showEvents($request);
+    }
+
+    /**
+     * EventController@executeChatPostMessageOfShowEventsの正常処理テスト
+     * 開催予定のイベントがある場合に処理を完了できるかどうか
+     */
+    public function testSuccessExecuteChatPostMessageOfShowEventsIfEventIs()
     {
         $event_payload_mock = Mockery::mock('overload:App\Http\Controllers\BlockPayloads\EventPayloadController');
         $event_payload_mock->shouldReceive('getShowEventBlockConstitution')
@@ -810,21 +994,14 @@ class EventTest extends TestCase
             'user_id' => $this->faker->userName,
         ]);
 
-        $response = app()->make('App\Http\Controllers\EventController')->showEvents($request);
-
-        $this->assertArrayHasKey('header', $response);
-        $this->assertArrayHasKey('contents', $response);
-
-        $this->assertInstanceOf('JoliCode\Slack\Api\Model\ChatPostMessagePostResponse200', $response['header']);
-        $this->assertCount($count, $response['contents']);
-        $this->assertContainsOnly('JoliCode\Slack\Api\Model\ChatPostMessagePostResponse200', $response['contents']);
+        app()->make('App\Http\Controllers\EventController')->executeChatPostMessageOfShowEvents($request);
     }
 
     /**
-     * EventController@showEventsの正常処理テスト
-     * 開催予定のイベントがない場合にメッセージを表示できるかどうか
+     * EventController@executeChatPostMessageOfShowEventsの正常処理テスト
+     * 開催予定のイベントがない場合に処理を完了できるかどうか
      */
-    public function testSuccessShowEventIfEventIsNot()
+    public function testSuccessExecuteChatPostMessageOfShowEventsIfEventIsNot()
     {
         $event_payload_mock = Mockery::mock('overload:App\Http\Controllers\BlockPayloads\EventPayloadController');
         $event_payload_mock->shouldReceive('getShowEventBlockConstitution')
@@ -837,25 +1014,21 @@ class EventTest extends TestCase
             'user_id' => $this->faker->userName,
         ]);
 
-        $response = app()->make('App\Http\Controllers\EventController')->showEvents($request);
-
-        $this->assertArrayHasKey('header', $response);
-        $this->assertArrayHasKey('contents', $response);
-
-        $this->assertInstanceOf('JoliCode\Slack\Api\Model\ChatPostMessagePostResponse200', $response['header']);
-        $this->assertCount(1, $response['contents']);
-        $this->assertContainsOnly('JoliCode\Slack\Api\Model\ChatPostMessagePostResponse200', $response['contents']);
+        app()->make('App\Http\Controllers\EventController')->executeChatPostMessageOfShowEvents($request);
     }
 
     /**
-     * EventController@showEventsの例外処理テスト
-     * イベント表示時に例外が発生した場合、例外処理を無事に行えるかどうか
+     * EventController@executeChatPostMessageOfShowEventsの例外処理テスト
+     * イベント表示時に例外が発生した場合、例外を返せるか
      *
      * @runInSeparateProcess
      * @preserveGlobalState disabled
      */
-    public function testErrorShowEventIfExpectionOccurs()
+    public function testErrorExecuteChatPostMessageOfShowEventsIfExpectionOccurs()
     {
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('Event payload controller returned error code');
+
         $event_payload_mock = Mockery::mock('overload:App\Http\Controllers\BlockPayloads\EventPayloadController');
         $error = 'Event payload controller returned error code';
         $event_payload_mock->shouldReceive('getShowHeaderBlockConstitution')
@@ -868,16 +1041,32 @@ class EventTest extends TestCase
             'user_id' => $this->faker->userName,
         ]);
 
-        $response = app()->make('App\Http\Controllers\EventController')->showEvents($request);
-
-        $this->assertStringContainsString(false, $response);
+        app()->make('App\Http\Controllers\EventController')->ExecuteChatPostMessageOfShowEvents($request);
     }
 
     /**
      * EventController@noticeEventの正常処理テスト
-     * 知らせるべきイベントを知らせられるかどうか
+     * 正常に実行できるかどうか
      */
     public function testSuccessNoticeEvent()
+    {
+        $event_payload_mock = Mockery::mock('overload:App\Http\Controllers\BlockPayloads\EventPayloadController');
+        $event_payload_mock->shouldReceive('getNoticeEventBlocks')
+            ->andReturn(['key' => 'value']);
+
+        $request = new Request();
+        $request->merge([
+            'user_id' => $this->faker->userName,
+        ]);
+
+        app()->make('App\Http\Controllers\EventController')->noticeEvent($request);
+    }
+
+    /**
+     * EventController@executeChatPostMessageOfNoticeEventの正常処理テスト
+     * 知らせるべきイベントを知らせられるかどうか
+     */
+    public function testSuccessExecuteChatPostMessageOfNoticeEvent()
     {
         $event_payload_mock = Mockery::mock('overload:App\Http\Controllers\BlockPayloads\EventPayloadController');
         $event_payload_mock->shouldReceive('getNoticeEventBlocks')
@@ -898,17 +1087,14 @@ class EventTest extends TestCase
             'notice_ts' => $this->faker->randomNumber
         ]);
 
-        $response = app()->make('App\Http\Controllers\EventController')->noticeEvent();
-
-        $this->assertCount($should_noticed_count, $response);
-        $this->assertContainsOnly('JoliCode\Slack\Api\Model\ChatPostMessagePostResponse200', $response);
+        app()->make('App\Http\Controllers\EventController')->executeChatPostMessageOfNoticeEvent();
     }
 
     /**
-     * EventController@noticeEventの正常処理テスト
+     * EventController@executeChatPostMessageOfNoticeEventの正常処理テスト
      * 知らせるべきイベントがない時、無事に処理が終了するかどうか
      */
-    public function testSuccessNoticeEventIfEventIsNot()
+    public function testSuccessExecuteChatPostMessageOfNoticeEventIfEventIsNot()
     {
         $event_payload_mock = Mockery::mock('overload:App\Http\Controllers\BlockPayloads\EventPayloadController');
         $event_payload_mock->shouldReceive('getNoticeEventBlocks')
@@ -925,13 +1111,11 @@ class EventTest extends TestCase
             'notice_ts' => $this->faker->randomNumber
         ]);
 
-        $response = app()->make('App\Http\Controllers\EventController')->noticeEvent();
-
-        $this->assertEmpty($response);
+        app()->make('App\Http\Controllers\EventController')->executeChatPostMessageOfNoticeEvent();
     }
 
     /**
-     * EventController@noticeEventの例外処理テスト
+     * EventController@executeChatPostMessageOfNoticeEventの例外処理テスト
      * イベントお知らせ時に例外が発生した場合、例外処理を無事に行えるかどうか
      *
      * @runInSeparateProcess
@@ -939,6 +1123,9 @@ class EventTest extends TestCase
      */
     public function testErrorNoticeEventIfExpectionOccurs()
     {
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('Event payload controller returned error code');
+
         $event_payload_mock = Mockery::mock('overload:App\Http\Controllers\BlockPayloads\EventPayloadController');
         $error = 'Event payload controller returned error code';
         $event_payload_mock->shouldReceive('getNoticeEventBlocks')
@@ -950,9 +1137,7 @@ class EventTest extends TestCase
             'notice_datetime' => $this->faker->dateTimeBetween('-2 week', '-1 minute'),
         ]);
 
-        $response = app()->make('App\Http\Controllers\EventController')->noticeEvent();
-
-        $this->assertStringContainsString(false, $response);
+        app()->make('App\Http\Controllers\EventController')->executeChatPostMessageOfNoticeEvent();
     }
 
     /**
@@ -965,6 +1150,19 @@ class EventTest extends TestCase
         $event_payload_mock->shouldReceive('getRemindEventBlocks')
             ->andReturn(['key' => 'value']);
 
+        app()->make('App\Http\Controllers\EventController')->remindEvent();
+    }
+
+    /**
+     * EventController@executeChatPostMessageOfRemindEventの正常処理テスト
+     * 今日開催予定のイベントをリマインドできるかどうか
+     */
+    public function testSuccessExecuteChatPostMessageOfRemindEvent()
+    {
+        $event_payload_mock = Mockery::mock('overload:App\Http\Controllers\BlockPayloads\EventPayloadController');
+        $event_payload_mock->shouldReceive('getRemindEventBlocks')
+            ->andReturn(['key' => 'value']);
+
         $should_reminded_count = $this->faker->numberBetween(1, 20);
         $should_not_reminded_count = $this->faker->numberBetween(1, 20);
         $reminded_count = $this->faker->numberBetween(1, 20);
@@ -980,17 +1178,14 @@ class EventTest extends TestCase
             'remind_ts' => $this->faker->randomNumber
         ]);
 
-        $response = app()->make('App\Http\Controllers\EventController')->remindEvent();
-
-        $this->assertCount($should_reminded_count, $response);
-        $this->assertContainsOnly('JoliCode\Slack\Api\Model\ChatPostMessagePostResponse200', $response);
+        app()->make('App\Http\Controllers\EventController')->executeChatPostMessageOfRemindEvent();
     }
 
     /**
-     * EventController@remindEventの正常処理テスト
+     * EventController@executeChatPostMessageOfRemindEventの正常処理テスト
      * 今日開催予定のイベントがない時、無事に処理が終了するかどうか
      */
-    public function testSuccessRemindEventIfEventIsNot()
+    public function testSuccessExecuteChatPostMessageOfRemindEventIfEventIsNot()
     {
         $event_payload_mock = Mockery::mock('overload:App\Http\Controllers\BlockPayloads\EventPayloadController');
         $event_payload_mock->shouldReceive('getRemindEventBlocks')
@@ -1007,20 +1202,21 @@ class EventTest extends TestCase
             'remind_ts' => $this->faker->randomNumber
         ]);
 
-        $response = app()->make('App\Http\Controllers\EventController')->remindEvent();
-
-        $this->assertEmpty($response);
+        app()->make('App\Http\Controllers\EventController')->executeChatPostMessageOfRemindEvent();
     }
 
     /**
-     * EventController@remindEventの例外処理テスト
-     * 今日開催予定のイベントをリマインドする時に例外が発生した場合、例外処理を無事に行えるかどうか
+     * EventController@executeChatPostMessageOfRemindEventの例外処理テスト
+     * 今日開催予定のイベントをリマインドする時に例外が発生した場合、例外を返せるか
      *
      * @runInSeparateProcess
      * @preserveGlobalState disabled
      */
-    public function testErrorRemindEventIfExpectionOccurs()
+    public function testErrorExecuteChatPostMessageOfRemindEventIfExpectionOccurs()
     {
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('Event payload controller returned error code');
+
         $event_payload_mock = Mockery::mock('overload:App\Http\Controllers\BlockPayloads\EventPayloadController');
         $error = 'Event payload controller returned error code';
         $event_payload_mock->shouldReceive('getRemindEventBlocks')
@@ -1032,9 +1228,7 @@ class EventTest extends TestCase
             'event_datetime' => $this->faker->dateTimeBetween('today', 'today'),
         ]);
 
-        $response = app()->make('App\Http\Controllers\EventController')->remindEvent();
-
-        $this->assertStringContainsString(false, $response);
+        app()->make('App\Http\Controllers\EventController')->executeChatPostMessageOfRemindEvent();
     }
 
     /**
@@ -1048,6 +1242,20 @@ class EventTest extends TestCase
         $event_payload_mock->shouldReceive('getShareEventUrlBlocks')
             ->andReturn(['key' => 'value']);
 
+        app()->make('App\Http\Controllers\EventController')->shareEventUrl();
+    }
+
+    /**
+     * EventController@executeChatPostMessageOfShareEventUrlの正常処理テスト
+     * 15分後に始まるイベントのURLを共有できるかどうか
+     */
+
+    public function testSuccessExecuteChatPostMessageOfShareEventUrl()
+    {
+        $event_payload_mock = Mockery::mock('overload:App\Http\Controllers\BlockPayloads\EventPayloadController');
+        $event_payload_mock->shouldReceive('getShareEventUrlBlocks')
+            ->andReturn(['key' => 'value']);
+
         $should_shared_url_count = $this->faker->numberBetween(1, 20);
         $should_not_shared_url_count = $this->faker->numberBetween(1, 20);
 
@@ -1060,18 +1268,15 @@ class EventTest extends TestCase
             'event_datetime' => $this->faker->dateTimeBetween('tomorrow', '+2 week'),
         ]);
 
-        $response = app()->make('App\Http\Controllers\EventController')->shareEventUrl();
-
-        $this->assertCount($should_shared_url_count, $response);
-        $this->assertContainsOnly('JoliCode\Slack\Api\Model\ChatPostMessagePostResponse200', $response);
+        app()->make('App\Http\Controllers\EventController')->executeChatPostMessageOfShareEventUrl();
     }
 
     /**
-     * EventController@shareEventUrlの正常処理テスト
+     * EventController@executeChatPostMessageOfShareEventUrlの正常処理テスト
      * 15分後に始まるイベントがない時、無事に処理が終了するかどうか
      */
 
-    public function testSuccessShareEventUrlIfEventIsNot()
+    public function testSuccessExecuteChatPostMessageOfShareEventUrlIfEventIsNot()
     {
         $event_payload_mock = Mockery::mock('overload:App\Http\Controllers\BlockPayloads\EventPayloadController');
         $event_payload_mock->shouldReceive('getShareEventUrlBlocks')
@@ -1079,27 +1284,26 @@ class EventTest extends TestCase
 
         $should_not_shared_url_count = $this->faker->numberBetween(1, 20);
 
-        $now = new DateTime();
-
         factory(Event::class, $should_not_shared_url_count)->create([
             'event_datetime' => $this->faker->dateTimeBetween('tomorrow', '+2 week'),
         ]);
 
-        $response = app()->make('App\Http\Controllers\EventController')->shareEventUrl();
-
-        $this->assertEmpty($response);
+        app()->make('App\Http\Controllers\EventController')->executeChatPostMessageOfShareEventUrl();
     }
 
     /**
-     * EventController@shareEventUrlの例外処理テスト
+     * EventController@executeChatPostMessageOfShareEventUrlの例外処理テスト
      * 15分後に始まるイベントのURLを共有する時に例外が発生した場合、例外処理を無事に行えるかどうか
      *
      * @runInSeparateProcess
      * @preserveGlobalState disabled
      */
 
-    public function testErrorShareEventUrlIfExpectionOccurs()
+    public function testErrorExecuteChatPostMessageOfShareEventUrlIfExpectionOccurs()
     {
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('Event payload controller returned error code');
+
         $event_payload_mock = Mockery::mock('overload:App\Http\Controllers\BlockPayloads\EventPayloadController');
         $error = 'Event payload controller returned error code';
         $event_payload_mock->shouldReceive('getShareEventUrlBlocks')
@@ -1112,17 +1316,15 @@ class EventTest extends TestCase
         factory(Event::class, $should_shared_url_count)->create([
             'event_datetime' => $now->modify('+15 minute')->format('Y-m-d H:i:00'),
         ]);
-        $response = app()->make('App\Http\Controllers\EventController')->shareEventUrl();
 
-        $this->assertStringContainsString(false, $response);
+        app()->make('App\Http\Controllers\EventController')->executeChatPostMessageOfShareEventUrl();
     }
 
     /**
      * EventController@updateEventPostsの正常処理テスト
-     * 既にお知らせしている場合に、イベントに関する投稿の参加者情報を更新できるかどうか
      */
 
-    public function testSuccessUpdateEventPostsIfEventIsAlreadyNoticed()
+    public function testSuccessUpdateEventPosts()
     {
         $event_payload_mock = Mockery::mock('overload:App\Http\Controllers\BlockPayloads\EventPayloadController');
         $event_payload_mock->shouldReceive('getNoticeEventBlocks')
@@ -1132,17 +1334,33 @@ class EventTest extends TestCase
             'notice_ts' => $this->faker->randomNumber
         ]);
 
-        $response = app()->make('App\Http\Controllers\EventController')->updateEventPosts($event);
-
-        $this->assertInstanceOf('JoliCode\Slack\Api\Model\ChatUpdatePostResponse200', $response['notice']);
+        app()->make('App\Http\Controllers\EventController')->updateEventPosts($event);
     }
 
     /**
-     * EventController@updateEventPostsの正常処理テスト
+     * EventController@executeChatPostMessageOfUpdateEventPostsの正常処理テスト
+     * 既にお知らせしている場合に、イベントに関する投稿の参加者情報を更新できるかどうか
+     */
+
+    public function testSuccessExecuteChatPostMessageOfUpdateEventPostsIfEventIsAlreadyNoticed()
+    {
+        $event_payload_mock = Mockery::mock('overload:App\Http\Controllers\BlockPayloads\EventPayloadController');
+        $event_payload_mock->shouldReceive('getNoticeEventBlocks')
+            ->andReturn(['key' => 'value']);
+
+        $event = factory(Event::class)->create([
+            'notice_ts' => $this->faker->randomNumber
+        ]);
+
+        app()->make('App\Http\Controllers\EventController')->executeChatPostMessageOfUpdateEventPosts($event);
+    }
+
+    /**
+     * EventController@executeChatPostMessageOfUpdateEventPostsの正常処理テスト
      * 既にリマインドしている場合に、イベントに関する投稿の参加者情報を更新できるかどうか
      */
 
-    public function testSuccessUpdateEventPostsIfEventIsAlreadyReminded()
+    public function testSuccessExecuteChatPostMessageOfUpdateEventPostsIfEventIsAlreadyReminded()
     {
         $event_payload_mock = Mockery::mock('overload:App\Http\Controllers\BlockPayloads\EventPayloadController');
         $event_payload_mock->shouldReceive('getRemindEventBlocks')
@@ -1152,21 +1370,22 @@ class EventTest extends TestCase
             'remind_ts' => $this->faker->randomNumber
         ]);
 
-        $response = app()->make('App\Http\Controllers\EventController')->updateEventPosts($event);
-
-        $this->assertInstanceOf('JoliCode\Slack\Api\Model\ChatUpdatePostResponse200', $response['remind']);
+        app()->make('App\Http\Controllers\EventController')->executeChatPostMessageOfUpdateEventPosts($event);
     }
 
     /**
-     * EventController@updateEventPostsの例外処理テスト
+     * EventController@executeChatPostMessageOfUpdateEventPostsの例外処理テスト
      * イベントに関する投稿の参加者情報更新時に例外が発生した場合、例外処理を無事に行えるかどうか
      *
      * @runInSeparateProcess
      * @preserveGlobalState disabled
      */
 
-    public function testErrorUpdateEventPostsIfExpectionOccurs()
+    public function testErrorExecuteChatPostMessageOfUpdateEventPostsIfExpectionOccurs()
     {
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('Event payload controller returned error code');
+
         $event_payload_mock = Mockery::mock('overload:App\Http\Controllers\BlockPayloads\EventPayloadController');
         $error = 'Event payload controller returned error code';
         $event_payload_mock->shouldReceive('getNoticeEventBlocks')
@@ -1179,8 +1398,6 @@ class EventTest extends TestCase
             'remind_ts' => $this->faker->randomNumber
         ]);
 
-        $response = app()->make('App\Http\Controllers\EventController')->updateEventPosts($event);
-
-        $this->assertStringContainsString(false, $response);
+        app()->make('App\Http\Controllers\EventController')->executeChatPostMessageOfUpdateEventPosts($event);
     }
 }
