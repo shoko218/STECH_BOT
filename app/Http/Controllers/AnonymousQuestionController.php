@@ -57,7 +57,7 @@ class AnonymousQuestionController extends Controller
         $user_inputs = $payload['view']['state']['values'];
         $mentor_number = intval($user_inputs['mentors-block']['mentor']['selected_option']['value']);
         $question_sentence = $user_inputs['question-block']['question']['value'];
-        $mention = $mentor_number == 6 ? ' 全体へ' : config("const.slack_id.mentors")[$mentor_number];
+        $mention = $mentor_number == count(config("const.slack_id.mentors")) ? ' 全体へ' : config("const.slack_id.mentors")[$mentor_number]['id'];
 
         $this->slack_client->chatPostMessage([
             'channel' => config('const.slack_id.question_channel'),
