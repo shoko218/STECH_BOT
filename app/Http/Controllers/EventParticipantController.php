@@ -22,7 +22,6 @@ class EventParticipantController extends Controller
      * イベントの参加者を登録する
      *
      * @param array $payload
-     * @return boolean
      */
     public function create($payload)
     {
@@ -30,31 +29,37 @@ class EventParticipantController extends Controller
 
         DB::beginTransaction();
         try {
-            $event = Event::find($payload['message']['blocks'][4]['elements'][0]['value']);
-            $participant_slack_user_id = $payload['user']['id'];
-
-            $registered = EventParticipant::where('event_id', $event->id)->where('slack_user_id', $participant_slack_user_id)->first();
-            if ($registered === null) {//まだ参加登録していなければ登録
-                EventParticipant::create(['event_id' =>  $event->id,'slack_user_id' => $participant_slack_user_id]);
-            }
-
+            $event = $this->executeCreateEventParticipantToDB($payload);
             app()->make('App\Http\Controllers\EventController')->updateEventPosts($event);
-
             DB::commit();
-
-            return true;
         } catch (\Throwable $th) {
             Log::info($th);
             DB::rollBack();
-            return false;
         }
+    }
+
+    /**
+     * DBへのイベントの参加者登録を実行する
+     *
+     * @param array $payload
+     * @return Event $event
+     */
+    public function executeCreateEventParticipantToDB($payload)
+    {
+        $event = Event::find($payload['message']['blocks'][4]['elements'][0]['value']);
+        $participant_slack_user_id = $payload['user']['id'];
+
+        $registered = EventParticipant::where('event_id', $event->id)->where('slack_user_id', $participant_slack_user_id)->first();
+        if ($registered === null) {//まだ参加登録していなければ登録
+            EventParticipant::create(['event_id' =>  $event->id,'slack_user_id' => $participant_slack_user_id]);
+        }
+        return $event;
     }
 
     /**
      * イベントの参加者を削除する
      *
      * @param array $payload
-     * @return boolean
      */
     public function remove($payload)
     {
@@ -62,23 +67,30 @@ class EventParticipantController extends Controller
 
         DB::beginTransaction();
         try {
-            $event = Event::find($payload['message']['blocks'][4]['elements'][0]['value']);
-            $participant_slack_user_id = $payload['user']['id'];
-
-            $registered = EventParticipant::where('event_id', $event->id)->where('slack_user_id', $participant_slack_user_id)->first();
-            if ($registered !== null) {//既に参加登録していれば削除
-                $registered->delete();
-            }
-
+            $event = $this->executeRemoveEventParticipantFromDB($payload);
             app()->make('App\Http\Controllers\EventController')->updateEventPosts($event);
-
             DB::commit();
-
-            return true;
         } catch (\Throwable $th) {
             Log::info($th);
             DB::rollBack();
-            return false;
         }
+    }
+
+    /**
+     * DBからのイベント参加登録の削除を実行する
+     *
+     * @param array $payload
+     * @return Event $event
+     */
+    public function executeRemoveEventParticipantFromDB($payload)
+    {
+        $event = Event::find($payload['message']['blocks'][4]['elements'][0]['value']);
+        $participant_slack_user_id = $payload['user']['id'];
+
+        $registered = EventParticipant::where('event_id', $event->id)->where('slack_user_id', $participant_slack_user_id)->first();
+        if ($registered !== null) {//既に参加登録していれば削除
+            $registered->delete();
+        }
+        return $event;
     }
 }
