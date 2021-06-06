@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use GuzzleHttp\Client;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use JoliCode\Slack\ClientFactory;
@@ -19,77 +18,94 @@ class CounselingController extends Controller
     }
 
     /**
-    * 申し込みフォームを表示する
+    * 相談会申し込みフォームを表示する
     *
     * @param Request $request
-    * @return mixed
     */
     public function showApplicationModal(Request $request)
     {
+        response('', 200)->send();
         try {
-            $response = $this->slack_client->viewsOpen([
-                'trigger_id' => $request->trigger_id,
-                'view' => json_encode($this->counseling_payloads->getModalConstitution())
-            ]);
-            response('', 200)->send();
-            return $response;
+            $this->executeViewsOpenOfShowApplicationModal($request->trigger_id);
         } catch (\Throwable $th) {
             Log::info($th);
-            $response = $this->slack_client->chatPostMessage([
+            $this->slack_client->chatPostMessage([
                 'channel' => $request->user_id,
                 'text' => ':warning: エラーが発生し、フォームを表示できませんでした。もう一度お試しください。'
             ]);
-            return false;
         }
+    }
+
+    /**
+    * 相談会申し込みモーダルでslack apiのviews.Openを実行する
+    *
+    * @param string $trigger_id
+    */
+    public function executeViewsOpenOfShowApplicationModal($trigger_id)
+    {
+        $this->slack_client->viewsOpen([
+            'trigger_id' => $trigger_id,
+            'view' => json_encode($this->counseling_payloads->getModalConstitution())
+        ]);
     }
 
     /**
     * メンターさんに申し込み内容を送信する
     *
     * @param array $payload
-    * @return mixed
     */
     public function notifyToMentor($payload)
     {
         try {
-            $response = [];
-            $response[] = $this->slack_client->chatPostMessage([
-                'channel' => config('const.slack_id.mentor_channel'),
-                'blocks' => json_encode($this->counseling_payloads->getCompletedApplyBlockConstitution($payload))
-            ]);
-
-            $response[] = $this->slack_client->chatPostMessage([
-                'channel' => $payload['user']['id'],
-                'blocks' => json_encode($this->counseling_payloads->getNotifyApplyBlockConstitution($payload))
-            ]);
-            return $response;
+            $this->executeChatPostMessageOfNotifyToMentor($payload);
         } catch (\Throwable $th) {
             Log::info($th);
             $this->slack_client->chatPostMessage([
                 'channel' => $payload['user']['id'],
                 'text' => ':warning: エラーが発生し、申し込みを完了できませんでした。もう一度お試しください。'
             ]);
-            return false;
+        }
+    }
+
+    /**
+    * 申し込み情報送信メッセージでslack apiのchat.postMessageを実行する
+    *
+    * @param array $payload
+    */
+    public function executeChatPostMessageOfNotifyToMentor($payload)
+    {
+        $this->slack_client->chatPostMessage([
+            'channel' => config('const.slack_id.mentor_channel'),
+            'blocks' => json_encode($this->counseling_payloads->getCompletedApplyBlockConstitution($payload))
+        ]);
+
+        $this->slack_client->chatPostMessage([
+            'channel' => $payload['user']['id'],
+            'blocks' => json_encode($this->counseling_payloads->getNotifyApplyBlockConstitution($payload))
+        ]);
+    }
+
+    /**
+     * 相談会申し込みフォームを紹介するメッセージを送信する
+     */
+    public function introduceQuestionForm()
+    {
+        try {
+            $this->executeChatPostMessageOfIntroduceQuestionForm();
+        } catch (\Throwable $th) {
+            Log::info($th);
         }
     }
 
 
     /**
-     * 相談会申し込みフォームを紹介するメッセージを送信する
-     *
-     * @return mixed
+     * 相談会申し込みフォーム紹介メッセージでslack apiのchat.postMessageを実行する
      */
-    public function introduceQuestionForm()
+    public function executeChatPostMessageOfIntroduceQuestionForm()
     {
-        try {
-            $response = $this->slack_client->chatPostMessage([
-                'channel' => config('const.slack_id.general'),
-                'blocks' => json_encode($this->counseling_payloads->getIntroduceBlockConstitution())
-            ]);
-            return $response;
-        } catch (\Throwable $th) {
-            Log::info($th);
-            return false;
-        }
+        $this->slack_client->chatPostMessage([
+            'channel' => config('const.slack_id.general'),
+            'blocks' => json_encode($this->counseling_payloads->getIntroduceBlockConstitution())
+        ]);
     }
 }

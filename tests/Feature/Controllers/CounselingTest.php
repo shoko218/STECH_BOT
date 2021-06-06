@@ -18,6 +18,10 @@ class CounselingTest extends TestCase
     {
         parent::setUp();
 
+        $chat_post_message_post_response_200_mock = Mockery::mock('overload:JoliCode\Slack\Api\Model\ChatPostMessagePostResponse200');
+        $chat_post_message_post_response_200_mock->shouldReceive('getTs')
+            ->andReturn($this->faker->randomNumber);
+
         $slack_api_client_mock = Mockery::mock('overload:JoliCode\Slack\Api\Client');
         $slack_api_client_mock->shouldReceive('viewsOpen')
             ->with(Mockery::on(function ($arg) {
@@ -44,8 +48,21 @@ class CounselingTest extends TestCase
     }
 
     /**
+     * ルート"/slash/show_application_counseling_modal"が正しく設定されているかをテストする
+     */
+    public function testRoutingToShowCreateEventModal()
+    {
+        $counseling_payload_mock = Mockery::mock('overload:App\Http\Controllers\BlockPayloads\CounselingPayloadController');
+
+        $counseling_payload_mock->shouldReceive('getModalConstitution')
+            ->andReturn(['key' => 'value']);
+
+        $response = $this->json('POST', '/slash/show_application_counseling_modal', ['trigger_id' => $this->faker->userName]);
+        $response->assertStatus(200);
+    }
+    /**
     * CounselingController@showApplicationModalの正常処理テスト
-    * 申し込みフォームが表示できるか
+    * 正常に実行できるか
     *
     * @runInSeparateProcess
     * @preserveGlobalState disabled
@@ -63,14 +80,35 @@ class CounselingTest extends TestCase
             'user_id' => $this->faker->userName,
         ]);
 
-        $response = app()->make('App\Http\Controllers\CounselingController')->showApplicationModal($request);
-
-        $this->assertStringContainsString('ok', $response);
+        app()->make('App\Http\Controllers\CounselingController')->showApplicationModal($request);
     }
 
     /**
-    * CounselingController@showApplicationModalの例外処理テスト
-    * 申し込みフォーム表示の際に例外が発生した場合、例外処理を無事に行えるか
+    * CounselingController@executeViewsOpenOfShowApplicationModalの正常処理テスト
+    * 申し込みフォームが表示できるか
+    *
+    * @runInSeparateProcess
+    * @preserveGlobalState disabled
+    */
+    public function testSuccessExecuteViewsOpenOfShowApplicationModal()
+    {
+        $counseling_payload_mock = Mockery::mock('overload:App\Http\Controllers\BlockPayloads\CounselingPayloadController');
+
+        $counseling_payload_mock->shouldReceive('getModalConstitution')
+            ->andReturn(['key' => 'value']);
+
+        $request = new Request();
+        $request->merge([
+            'trigger_id' => $this->faker->userName,
+            'user_id' => $this->faker->userName,
+        ]);
+
+        app()->make('App\Http\Controllers\CounselingController')->executeViewsOpenOfShowApplicationModal($request);
+    }
+
+    /**
+    * CounselingController@executeViewsOpenOfShowApplicationModalの例外処理テスト
+    * 申し込みフォーム表示の際に例外が発生した場合、例外を返せるか
     *
     * @runInSeparateProcess
     * @preserveGlobalState disabled
@@ -82,14 +120,12 @@ class CounselingTest extends TestCase
             'user_id' => $this->faker->userName,
         ]);
 
-        $response = app()->make('App\Http\Controllers\CounselingController')->showApplicationModal($request);
-
-        $this->assertStringContainsString(false, $response);
+        app()->make('App\Http\Controllers\CounselingController')->executeViewsOpenOfShowApplicationModal($request);
     }
 
     /**
     * CounselingController@notifyToMentorの正常処理テスト
-    * メンターさんに申し込み内容を送信できるか
+    * 正常に実行できるか
 
     * @runInSeparateProcess
     * @preserveGlobalState disabled
@@ -110,32 +146,25 @@ class CounselingTest extends TestCase
             ]
         ];
 
-        $response = app()->make('App\Http\Controllers\CounselingController')->notifyToMentor($payload);
-
-        $this->assertCount(2, $response);
-        $this->assertContainsOnly('JoliCode\Slack\Api\Model\ChatPostMessagePostResponse200', $response);
+        app()->make('App\Http\Controllers\CounselingController')->notifyToMentor($payload);
     }
 
     /**
-    * CounselingController@notifyToMentorの例外処理テスト
-    * メンターさんに申し込み内容を送信する際に例外が発生した場合、例外処理を無事に行えるか
+    * CounselingController@executeChatPostMessageOfNotifyToMentorの正常処理テスト
+    * メンターさんに申し込み内容を送信できるか
 
     * @runInSeparateProcess
     * @preserveGlobalState disabled
     */
-    public function testErrorNotifyToMentorIfExpectionOccurs()
+    public function testExecuteChatPostMessageOfNotifyToMentor()
     {
         $counseling_payload_mock = Mockery::mock('overload:App\Http\Controllers\BlockPayloads\CounselingPayloadController');
 
-        $error = 'Counseling payload controller returned error code';
-
-
         $counseling_payload_mock->shouldReceive('getCompletedApplyBlockConstitution')
-            ->andThrow(new InvalidArgumentException($error))
+            ->with(Mockery::any())
+            ->andReturn(['key' => 'value'])
             ->shouldReceive('getNotifyApplyBlockConstitution')
-            ->andThrow(new InvalidArgumentException($error))
-            ->getMock();
-
+            ->with(Mockery::any());
 
         $payload = [
             'user' => [
@@ -143,14 +172,43 @@ class CounselingTest extends TestCase
             ]
         ];
 
-        $response = app()->make('App\Http\Controllers\CounselingController')->notifyToMentor($payload);
+        app()->make('App\Http\Controllers\CounselingController')->executeChatPostMessageOfNotifyToMentor($payload);
+    }
 
-        $this->assertStringContainsString(false, $response);
+    /**
+    * CounselingController@executeChatPostMessageOfNotifyToMentorの例外処理テスト
+    * メンターさんに申し込み内容を送信する際に例外が発生した場合、例外処理を無事に行えるか
+
+    * @runInSeparateProcess
+    * @preserveGlobalState disabled
+    */
+    public function testErrorNotifyToMentorIfExpectionOccurs()
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('Counseling payload controller returned error code');
+
+        $counseling_payload_mock = Mockery::mock('overload:App\Http\Controllers\BlockPayloads\CounselingPayloadController');
+
+        $error = 'Counseling payload controller returned error code';
+
+        $counseling_payload_mock->shouldReceive('getCompletedApplyBlockConstitution')
+            ->andThrow(new InvalidArgumentException($error))
+            ->shouldReceive('getNotifyApplyBlockConstitution')
+            ->andThrow(new InvalidArgumentException($error))
+            ->getMock();
+
+        $payload = [
+            'user' => [
+                'id' => $this->faker->userName,
+            ]
+        ];
+
+        app()->make('App\Http\Controllers\CounselingController')->executeChatPostMessageOfNotifyToMentor($payload);
     }
 
     /**
     * CounselingController@introduceQuestionFormの正常処理テスト
-    * 相談会申し込みフォームを紹介するメッセージを送信できるか
+    * 正常に実行できるか
     *
     * @runInSeparateProcess
     * @preserveGlobalState disabled
@@ -162,20 +220,38 @@ class CounselingTest extends TestCase
         $counseling_payload_mock->shouldReceive('getIntroduceBlockConstitution')
             ->andReturn(['key' => 'value']);
 
-        $response = app()->make('App\Http\Controllers\CounselingController')->introduceQuestionForm();
-
-        $this->assertInstanceOf('JoliCode\Slack\Api\Model\ChatPostMessagePostResponse200', $response);
+        app()->make('App\Http\Controllers\CounselingController')->introduceQuestionForm();
     }
 
     /**
-    * CounselingController@introduceQuestionFormの例外処理テスト
+    * CounselingController@executeChatPostMessageOfIntroduceQuestionFormの正常処理テスト
+    * 相談会申し込みフォームを紹介するメッセージを送信できるか
+    *
+    * @runInSeparateProcess
+    * @preserveGlobalState disabled
+    */
+    public function testSuccessExecuteChatPostMessageOfIntroduceQuestionForm()
+    {
+        $counseling_payload_mock = Mockery::mock('overload:App\Http\Controllers\BlockPayloads\CounselingPayloadController');
+
+        $counseling_payload_mock->shouldReceive('getIntroduceBlockConstitution')
+            ->andReturn(['key' => 'value']);
+
+        app()->make('App\Http\Controllers\CounselingController')->executeChatPostMessageOfIntroduceQuestionForm();
+    }
+
+    /**
+    * CounselingController@executeChatPostMessageOfIntroduceQuestionFormの例外処理テスト
     * 相談会申し込みフォームを紹介するメッセージを送信する際に例外が発生した場合、例外処理を無事に行えるか
     *
     * @runInSeparateProcess
     * @preserveGlobalState disabled
     */
-    public function testErrorIntroduceQuestionFormIfExpectionOccurs()
+    public function testErrorExecuteChatPostMessageOfIntroduceQuestionFormIfExpectionOccurs()
     {
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('Counseling payload controller returned error code');
+
         $counseling_payload_mock = Mockery::mock('overload:App\Http\Controllers\BlockPayloads\CounselingPayloadController');
 
         $error = 'Counseling payload controller returned error code';
@@ -183,8 +259,6 @@ class CounselingTest extends TestCase
         $counseling_payload_mock->shouldReceive('getIntroduceBlockConstitution')
             ->andThrow(new InvalidArgumentException($error));
 
-        $response = app()->make('App\Http\Controllers\CounselingController')->introduceQuestionForm();
-
-        $this->assertStringContainsString(false, $response);
+        app()->make('App\Http\Controllers\CounselingController')->executeChatPostMessageOfIntroduceQuestionForm();
     }
 }
