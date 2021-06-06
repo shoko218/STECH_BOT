@@ -218,7 +218,7 @@ class CounselingPayloadController extends Controller
                 "type" => "section",
                 "text" => [
                     "type" => "mrkdwn",
-                    "text" => "*相談したいメンター*\n{$mentor_name}さん <@${mentor_slack_id}>\n*相談内容*\n{$consultation_content}\n*第一希望*\n{$first_preferred_date_time}\n*第二希望*\n{$second_preferred_date_time}\n*第三希望*\n{$third_preferred_date_time}"
+                    "text" => "*相談したいメンター*\n{$mentor_name}さん <@${mentor_slack_id}>\n\n*相談内容*\n{$consultation_content}\n\n*第一希望*:{$first_preferred_date_time}\n*第二希望*:{$second_preferred_date_time}\n*第三希望*:{$third_preferred_date_time}"
                 ]
             ],
             [
@@ -271,7 +271,7 @@ class CounselingPayloadController extends Controller
                 "type" => "section",
                 "text" => [
                     "type" => "mrkdwn",
-                    "text" => "*名前*\n${user_name}さん <@${user_id}>\n*相談したいメンター*\n{$mentor_name}さん <@${mentor_slack_id}>\n*相談内容*\n{$consultation_content}\n*第一希望*\n{$first_preferred_date_time}\n*第二希望*\n{$second_preferred_date_time}\n*第三希望*\n{$third_preferred_date_time}"
+                    "text" => "*名前*\n${user_name}さん <@${user_id}>\n\n*相談したいメンター*\n{$mentor_name}さん <@${mentor_slack_id}>\n\n*相談内容*\n{$consultation_content}\n\n*第一希望*:{$first_preferred_date_time}\n*第二希望*:{$second_preferred_date_time}\n*第三希望*:{$third_preferred_date_time}"
                 ]
             ],
             [
