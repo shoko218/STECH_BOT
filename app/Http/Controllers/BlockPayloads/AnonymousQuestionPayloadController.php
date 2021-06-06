@@ -7,12 +7,12 @@ use Illuminate\Http\Request;
 
 class AnonymousQuestionPayloadController extends Controller
 {
-   /**
-    * 匿名質問フォームを紹介するメッセージを構成するブロックを作成する
-    *
-    * @return array
-    */
-    public function createQuestionFormIntroductionBlocks () 
+    /**
+     * 匿名質問フォームを紹介するメッセージを構成するブロックを作成する
+     *
+     * @return array
+     */
+    public function createQuestionFormIntroductionBlocks()
     {
         return [
             [
@@ -52,9 +52,9 @@ class AnonymousQuestionPayloadController extends Controller
     *
     * @return array
     */
-    public function createQuestionFormView () 
+    public function createQuestionFormView()
     {
-        return [
+        $view = [
                 "type"=> "modal",
                 "callback_id" => "ask_questions",
                 "title"=> [
@@ -117,62 +117,6 @@ class AnonymousQuestionPayloadController extends Controller
                                 "type" => "radio_buttons",
                                 "action_id" => "mentor",
                                 "options" => [
-                                    [
-                                        "text" => [
-                                            "type" => "plain_text",
-                                            "text" => "今川メンター：Ruby, Scala, PHP, AWSなど",
-                                            "emoji" => true
-                                        ],
-                                        "value" => "0"
-                                    ],
-                                    [
-                                        "text" => [
-                                            "type" => "plain_text",
-                                            "text" => "菊池メンター：Kotlin, flutter など",
-                                            "emoji" => true
-                                        ],
-                                        "value" => "1"
-                                    ],
-                                    [
-                                        "text" => [
-                                            "type" => "plain_text",
-                                            "text" => "工藤メンター：PHP, Go, ハッカソンの審査/勝ち方 など",
-                                            "emoji" => true
-                                        ],
-                                        "value" => "2"
-                                    ],
-                                    [
-                                        "text" => [
-                                            "type" => "plain_text",
-                                            "text" => "近藤メンター：JavaScript, TypeScript, フロントエンド全般 など",
-                                            "emoji" => true
-                                        ],
-                                        "value" => "3"
-                                    ],
-                                    [
-                                        "text" => [
-                                            "type" => "plain_text",
-                                            "text" => "noppe(平野)メンター：Swift, 個人開発 など",
-                                            "emoji" => true
-                                        ],
-                                        "value" => "4"
-                                    ],
-                                    [
-                                        "text" => [
-                                            "type" => "plain_text",
-                                            "text" => "山際メンター：Python, Go, 機械学習, 就活相談 など",
-                                            "emoji" => true
-                                        ],
-                                        "value" => "5"
-                                    ],
-                                    [
-                                        "text" => [
-                                            "type" => "plain_text",
-                                            "text" => "その他",
-                                            "emoji" => true
-                                        ],
-                                        "value" => "6"
-                                    ]
                                 ]
                             ]
                         ]
@@ -193,5 +137,27 @@ class AnonymousQuestionPayloadController extends Controller
                     ]
                 ]
             ];
+
+        foreach (config('const.slack_id.mentors') as $key => $mentor) {
+            $view['blocks'][6]['elements'][0]['options'][] = [
+                "text" => [
+                    "type" => "plain_text",
+                    "text" => $mentor['name']."：".$mentor['description'],
+                    "emoji" => true
+                ],
+                "value" => "$key"
+            ];
+        }
+
+        $view['blocks'][6]['elements'][0]['options'][] = [
+            "text" => [
+                "type" => "plain_text",
+                "text" => "その他",
+                "emoji" => true
+            ],
+            "value" => (string)($key+1)
+        ];
+
+        return $view;
     }
 }

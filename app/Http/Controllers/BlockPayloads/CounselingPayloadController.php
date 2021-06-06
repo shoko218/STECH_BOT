@@ -43,7 +43,7 @@ class CounselingPayloadController extends Controller
      */
     public function getModalConstitution()
     {
-        return [
+        $view = [
             "callback_id" => "apply_counseling",
             "title" => [
                 "type" => "plain_text",
@@ -63,47 +63,36 @@ class CounselingPayloadController extends Controller
             ],
             "blocks" => [
                 [
-                    "type" => "input",
-                    "block_id" => "mentor_slack_id",
-                    "label" => [
-                        "type" => "plain_text",
-                        "text" => "相談したいメンター",
-                        "emoji" => true
-                    ],
-                    "element" => [
-                        "type" => "static_select",
-                        "placeholder" => [
-                            "type" => "plain_text",
-                            "text" => "メンターさんを選択してください。",
-                            "emoji" => true
-                        ],
-                        "options" => [
-                            [
-                                "text" => [
-                                    "type" => "plain_text",
-                                    "text" => "メンター1",
-                                    "emoji" => true
-                                ],
-                                "value" => config('const.slack_id.mentors')[0]
-                            ],
-                            [
-                                "text" => [
-                                    "type" => "plain_text",
-                                    "text" => "メンター2",
-                                    "emoji" => true
-                                ],
-                                "value" => config('const.slack_id.mentors')[1]
+                    "type" => "divider"
+                ],
+                [
+                    "type" => "section",
+                    "text" => [
+                        "type" => "mrkdwn",
+                        "text" => ":pencil2: *質問したいメンター*"
+                    ]
+                ],
+                [
+                    "type" => "actions",
+                    "block_id" => "mentor",
+                    "elements" => [
+                        [
+                            "type" => "radio_buttons",
+                            "action_id" => "mentor",
+                            "options" => [
                             ]
                         ],
-                        "action_id" => "mentor_slack_id"
                     ]
+                ],
+                [
+                    "type" => "divider"
                 ],
                 [
                     "type" => "input",
                     "block_id" => "consultation_content",
                     "label" => [
                         "type" => "plain_text",
-                        "text" => "どんなことを質問/相談したいですか？",
+                        "text" => ":pencil2:どんなことを質問/相談したいですか？",
                         "emoji" => true
                     ],
                     "element" => [
@@ -117,14 +106,14 @@ class CounselingPayloadController extends Controller
                     ]
                 ],
                 [
+                    "type" => "divider"
+                ],
+                [
                     "type" => "section",
                     "text" => [
                         "type" => "mrkdwn",
-                        "text" => "*開催希望日時*\n※明日以降の日程を入力してください。"
+                        "text" => ":pencil2:*開催希望日時*\n※明日以降の日程を入力してください。"
                     ]
-                ],
-                [
-                    "type" => "divider"
                 ],
                 [
                     "type" => "input",
@@ -179,6 +168,19 @@ class CounselingPayloadController extends Controller
                 ]
             ]
         ];
+
+        foreach (config('const.slack_id.mentors') as $key => $mentor) {
+            $view['blocks'][2]['elements'][0]['options'][] = [
+                "text" => [
+                    "type" => "plain_text",
+                    "text" => $mentor['name']."：".$mentor['description'],
+                    "emoji" => true
+                ],
+                "value" => "$key"
+            ];
+        }
+
+        return $view;
     }
 
     /**
@@ -190,8 +192,10 @@ class CounselingPayloadController extends Controller
     public function getNotifyApplyBlockConstitution($payload)
     {
         //変数に変換
-        $mentor_slack_id = $payload['view']['state']['values']['mentor_slack_id']['mentor_slack_id']['selected_option']['value'];
-        $mentor_name = $payload['view']['state']['values']['mentor_slack_id']['mentor_slack_id']['selected_option']['text']['text'];
+        $mentor_number = $payload['view']['state']['values']['mentor']['mentor']['selected_option']['value'];
+        $mentor_slack_id = config("const.slack_id.mentors")[$mentor_number]['id'];
+        $mentor_name = config("const.slack_id.mentors")[$mentor_number]['name'];
+
         $consultation_content = $payload['view']['state']['values']['consultation_content']['consultation_content']['value'];
 
         $first_preferred_date_time = $payload['view']['state']['values']['first_preferred_date_time']['first_preferred_date_time']['value'];
@@ -214,7 +218,7 @@ class CounselingPayloadController extends Controller
                 "type" => "section",
                 "text" => [
                     "type" => "mrkdwn",
-                    "text" => "*相談したいメンター*\n{$mentor_name}さん <@${mentor_slack_id}>\n*相談内容*\n{$consultation_content}\n*第一希望*\n{$first_preferred_date_time}\n*第二希望*\n{$second_preferred_date_time}\n*第三希望*\n4{$third_preferred_date_time}"
+                    "text" => "*相談したいメンター*\n{$mentor_name}さん <@${mentor_slack_id}>\n*相談内容*\n{$consultation_content}\n*第一希望*\n{$first_preferred_date_time}\n*第二希望*\n{$second_preferred_date_time}\n*第三希望*\n{$third_preferred_date_time}"
                 ]
             ],
             [
@@ -239,8 +243,9 @@ class CounselingPayloadController extends Controller
     public function getCompletedApplyBlockConstitution($payload)
     {
         //変数に変換
-        $mentor_slack_id = $payload['view']['state']['values']['mentor_slack_id']['mentor_slack_id']['selected_option']['value'];
-        $mentor_name = $payload['view']['state']['values']['mentor_slack_id']['mentor_slack_id']['selected_option']['text']['text'];
+        $mentor_number = $payload['view']['state']['values']['mentor']['mentor']['selected_option']['value'];
+        $mentor_slack_id = config("const.slack_id.mentors")[$mentor_number]['id'];
+        $mentor_name = config("const.slack_id.mentors")[$mentor_number]['name'];
         $consultation_content = $payload['view']['state']['values']['consultation_content']['consultation_content']['value'];
 
         $first_preferred_date_time = $payload['view']['state']['values']['first_preferred_date_time']['first_preferred_date_time']['value'];
@@ -266,7 +271,7 @@ class CounselingPayloadController extends Controller
                 "type" => "section",
                 "text" => [
                     "type" => "mrkdwn",
-                    "text" => "*名前*\n${user_name}さん <@${user_id}>\n*相談したいメンター*\n{$mentor_name}さん <@${mentor_slack_id}>\n*相談内容*\n{$consultation_content}\n*第一希望*\n{$first_preferred_date_time}\n*第二希望*\n{$second_preferred_date_time}\n*第三希望*\n4{$third_preferred_date_time}"
+                    "text" => "*名前*\n${user_name}さん <@${user_id}>\n*相談したいメンター*\n{$mentor_name}さん <@${mentor_slack_id}>\n*相談内容*\n{$consultation_content}\n*第一希望*\n{$first_preferred_date_time}\n*第二希望*\n{$second_preferred_date_time}\n*第三希望*\n{$third_preferred_date_time}"
                 ]
             ],
             [

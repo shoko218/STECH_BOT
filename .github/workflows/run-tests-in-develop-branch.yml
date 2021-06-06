@@ -35,4 +35,11 @@ jobs:
         DB_TEST_USERNAME: root
         DB_TEST_PASSWORD: root
         SLACK_TOKEN: sample
+        SLACK_ID_GENERAL: C01MGFXJSD8
+        SLACK_ID_ADMINISTRATOR: U01MGFXHWF4
+        SLACK_ID_MENTOR_CHANNEL: C01TCU28B28
+        SLACK_ID_QUESTION_CHANNEL: C01SM8H8TDY
+        SLACK_ID_MENTORS_NAME: 今川メンター,菊池メンター,工藤メンター,noppe(平野)メンター,山際メンター
+        SLACK_ID_MENTORS_DESCRIPTION: Ruby、Scala、PHP、AWSなど,Kotlin、flutterなど,PHP、Go、ハッカソンの審査/勝ち方など,Swift、個人開発など,Python、Go、機械学習、就活相談など
+        SLACK_ID_MENTORS_ID: U01PE3ZUX5E,U01SM47RJLT,UU6RPHQGG,UU6RPJUJU,UTZC4SKPV
       run: vendor/bin/phpunit

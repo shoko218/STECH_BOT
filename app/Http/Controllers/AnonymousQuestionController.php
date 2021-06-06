@@ -23,7 +23,7 @@ class AnonymousQuestionController extends Controller
     /**
      * slack apiのviewOspenを実行する
      */
-    public function executeViewsOpen ($request)
+    public function executeViewsOpen($request)
     {
         $query_params = [
             'view' => json_encode(app()->make('App\Http\Controllers\BlockPayloads\AnonymousQuestionPayloadController')->createQuestionFormView()),
@@ -38,13 +38,12 @@ class AnonymousQuestionController extends Controller
      *
      * @param Request $request
      */
-    public function openQuestionForm (Request $request) 
+    public function openQuestionForm(Request $request)
     {
-        response('', 200)->send(); 
-        
+        response('', 200)->send();
+
         try {
             $this->executeViewsOpen($request);
-
         } catch (SlackErrorResponse $e) {
             Log::info($e->getMessage());
         }
@@ -53,13 +52,13 @@ class AnonymousQuestionController extends Controller
     /**
      * sendQuestionToChannel()のapi接続部分
      */
-    public function executeChatPostMessageOfQuestion ($payload)
+    public function executeChatPostMessageOfQuestion($payload)
     {
         $user_inputs = $payload['view']['state']['values'];
         $mentor_number = intval($user_inputs['mentors-block']['mentor']['selected_option']['value']);
-        $question_sentence = $user_inputs['question-block']['question']['value'];    
+        $question_sentence = $user_inputs['question-block']['question']['value'];
         $mention = $mentor_number == 6 ? ' 全体へ' : config("const.slack_id.mentors")[$mentor_number];
-        
+
         $this->slack_client->chatPostMessage([
             'channel' => config('const.slack_id.question_channel'),
             'username' => '匿名の相談です',
@@ -92,15 +91,14 @@ class AnonymousQuestionController extends Controller
 
     /**
      * 受け付けた匿名質問をメッセージとして公開チャンネルに流す
-     * 
+     *
      * @param Request $request
      * @var string $mention メンション先を定義
      */
-    public function sendQuestionToChannel ($payload)
+    public function sendQuestionToChannel($payload)
     {
         try {
             $this->executeChatPostMessageOfQuestion($payload);
-
         } catch (SlackErrorResponse $e) {
             Log::info($e->getMessage());
         }
@@ -109,22 +107,21 @@ class AnonymousQuestionController extends Controller
     /**
      * introduceQuestionForm()のapi接続部分
      */
-    public function executeChatPostMessageOfIntroduction ()
+    public function executeChatPostMessageOfIntroduction()
     {
         $this->slack_client->chatPostMessage([
             'channel' => config('const.slack_id.question_channel'),
             'blocks' => json_encode(app()->make('App\Http\Controllers\BlockPayloads\AnonymousQuestionPayloadController')->createQuestionFormIntroductionBlocks())
         ]);
     }
-    
+
     /**
      * 匿名質問フォームを紹介するメッセージを送る
      */
-    public function introduceQuestionForm ()
+    public function introduceQuestionForm()
     {
         try {
             $this->executeChatPostMessageOfIntroduction();
-
         } catch (SlackErrorResponse $e) {
             Log::info($e->getMessage());
         }
