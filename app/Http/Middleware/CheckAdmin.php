@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use Closure;
+use JoliCode\Slack\ClientFactory;
 
 class CheckAdmin
 {
@@ -18,7 +19,14 @@ class CheckAdmin
         if ($request->user_id === config('const.slack_id.administrator')) {
             return $next($request);
         } else {
-            response('このコマンドは管理者専用です。', 200)->send();
+            $slack_client = ClientFactory::create(config('services.slack.token'));
+
+            $slack_client->chatPostMessage([
+                'channel' => $request->user_id,
+                'text' => ':warning: このコマンドは管理者専用です。'
+            ]);
+
+            return response('', 200)->send();
         }
     }
 }
