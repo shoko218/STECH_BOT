@@ -889,7 +889,7 @@ class EventPayloadController extends Controller
                 "type" => "section",
                 "text" => [
                     "type" => "mrkdwn",
-                    "text" => "この後{$event->event_datetime->format('G:i')}から開催する *{$event->name}* のURLはこちら！\n*{$event->url}*"
+                    "text" => "この後{$event->event_datetime->format('G:i')}から開催する *{$event->name}* のURLはこちら！\n{$event->url}"
                 ]
             ]
         ];
