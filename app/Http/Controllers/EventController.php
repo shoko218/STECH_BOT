@@ -207,14 +207,14 @@ class EventController extends Controller
 
         if ($event->notice_ts != null) {//既にお知らせしていればお知らせ投稿を削除
             $this->slack_client->chatDelete([
-                'channel' => config('const.slack_id.general'),
+                'channel' => config('const.slack_id.event_channel'),
                 'ts' => $event->notice_ts,
             ]);
         }
 
         if ($event->remind_ts != null) {//既にリマインドしていればリマインド投稿を削除
             $this->slack_client->chatDelete([
-                'channel' => config('const.slack_id.general'),
+                'channel' => config('const.slack_id.event_channel'),
                 'ts' => $event->remind_ts,
             ]);
         }
@@ -338,7 +338,7 @@ class EventController extends Controller
 
         foreach ($notice_events as $event) {
             $msg = $this->slack_client->chatPostMessage([
-                'channel' => config('const.slack_id.general'),
+                'channel' => config('const.slack_id.event_channel'),
                 'blocks' => json_encode($this->event_payloads->getNoticeEventBlocks($event)),
             ]);
 
@@ -372,7 +372,7 @@ class EventController extends Controller
 
         foreach ($today_held_events as $event) {
             $msg = $this->slack_client->chatPostMessage([
-                'channel' => config('const.slack_id.general'),
+                'channel' => config('const.slack_id.event_channel'),
                 'blocks' => json_encode($this->event_payloads->getRemindEventBlocks($event)),
             ]);
 
@@ -409,7 +409,7 @@ class EventController extends Controller
 
         foreach ($coming_soon_events as $event) {
             $this->slack_client->chatPostMessage([
-                'channel' => config('const.slack_id.general'),
+                'channel' => config('const.slack_id.event_channel'),
                 'blocks' => json_encode($this->event_payloads->getShareEventUrlBlocks($event)),
             ]);
         }
@@ -439,7 +439,7 @@ class EventController extends Controller
     {
         if ($event->notice_ts != null) {//既にお知らせしていればお知らせ投稿を更新
             $this->slack_client->chatUpdate([
-                'channel' => config('const.slack_id.general'),
+                'channel' => config('const.slack_id.event_channel'),
                 'ts' => $event->notice_ts,
                 'blocks' => json_encode($this->event_payloads->getNoticeEventBlocks($event)),
             ]);
@@ -447,7 +447,7 @@ class EventController extends Controller
 
         if ($event->remind_ts != null) {//既にリマインドしていればリマインド投稿を更新
             $this->slack_client->chatUpdate([
-                'channel' => config('const.slack_id.general'),
+                'channel' => config('const.slack_id.event_channel'),
                 'ts' => $event->remind_ts,
                 'blocks' => json_encode($this->event_payloads->getRemindEventBlocks($event)),
             ]);
