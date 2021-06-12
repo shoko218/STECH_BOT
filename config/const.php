@@ -7,6 +7,7 @@ $mentor_ids = array_map('trim', explode(',', env('SLACK_ID_MENTORS_ID')));
 $const = [
     'slack_id' => [
         'general' => env('SLACK_ID_GENERAL'),
+        'event_channel' => env('SLACK_ID_EVENT_CHANNEL'),
         'administrator' => env('SLACK_ID_ADMINISTRATOR'),
         'mentor_channel' => env('SLACK_ID_MENTOR_CHANNEL'),
         'question_channel' => env('SLACK_ID_QUESTION_CHANNEL'),
